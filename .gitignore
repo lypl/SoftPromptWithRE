@@ -1,3 +1,13 @@
+wandb
+stanford-corenlp-4.3.2
+wrong_samples
+__pycache__
+datasets
+NER.py
+stanford-corenlp-latest.zip
+test_for_cuda.py
+tmp.json
+
 # Built application files
 *.apk
 *.aar
