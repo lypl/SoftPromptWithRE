@@ -1,0 +1,7 @@
+{
+    "device": "cuda:1", 
+    "per_gpu_eval_batch_size": 32,
+    "metrics":"['precision', 'recall', 'f1-score', 'top-1']",
+    "multiclass": "True",
+    "topk": 1
+}

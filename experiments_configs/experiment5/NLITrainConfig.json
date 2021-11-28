@@ -1,0 +1,15 @@
+{
+    "learning_rate": 3e-1, 
+    "eval_step": 1000,  
+    "warmup_proportion": 0.1, 
+    "save_optiprompt_dir_parent": "os.path.join(os.getcwd(), 'experiments_results')", 
+    "max_step": -1, 
+    "num_train_epoch": 4, 
+    "train_batch_size": 32, 
+    "eval_batch_size": 256,
+    "check_step": 1000, 
+    "gradient_accumulation": 8,
+    "seed": 6, 
+    "device": "cuda:3",
+    "prompt_type": "relvec"
+}

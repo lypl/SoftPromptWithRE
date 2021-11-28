@@ -1,0 +1,81 @@
+{
+    "model_type": "roberta",
+    "model_name_or_path": "roberta-large-mnli", 
+    "wrapper_type": "sequence_classifier", 
+    "dataset_name": "TACRED", 
+    "max_seq_length": 150, 
+    "max_num_relvec": 5, 
+    "template_type": "manual_template",
+    "compelete_mode": "manual_template",
+    "relvec_construct_mode": "not",
+    "prompt_type": "None",
+    "relations_data_dir_parent": "os.path.join(os.getcwd(), 'datasets')", 
+    "relations_data_name": "TACRED_manT", 
+    "valid_conditions": {
+        "per:alternate_names": ["PERSON:PERSON", "PERSON:MISC"],
+        "per:date_of_birth": ["PERSON:DATE"],
+        "per:age": ["PERSON:NUMBER", "PERSON:DURATION"],
+        "per:country_of_birth": ["PERSON:COUNTRY"],
+        "per:stateorprovince_of_birth": ["PERSON:STATE_OR_PROVINCE"],
+        "per:city_of_birth": ["PERSON:CITY"],
+        "per:origin": [
+            "PERSON:NATIONALITY",
+            "PERSON:COUNTRY",
+            "PERSON:LOCATION"
+        ],
+        "per:date_of_death": ["PERSON:DATE"],
+        "per:country_of_death": ["PERSON:COUNTRY"],
+        "per:stateorprovince_of_death": ["PERSON:STATE_OR_PROVICE"],
+        "per:city_of_death": ["PERSON:CITY", "PERSON:LOCATION"],
+        "per:cause_of_death": ["PERSON:CAUSE_OF_DEATH"],
+        "per:countries_of_residence": ["PERSON:COUNTRY", "PERSON:NATIONALITY"],
+        "per:stateorprovinces_of_residence": ["PERSON:STATE_OR_PROVINCE"],
+        "per:cities_of_residence": ["PERSON:CITY", "PERSON:LOCATION"],
+        "per:schools_attended": ["PERSON:ORGANIZATION"],
+        "per:title": ["PERSON:TITLE"],
+        "per:employee_of": ["PERSON:ORGANIZATION"],
+        "per:religion": ["PERSON:RELIGION"],
+        "per:spouse": ["PERSON:PERSON"],
+        "per:children": ["PERSON:PERSON"],
+        "per:parents": ["PERSON:PERSON"],
+        "per:siblings": ["PERSON:PERSON"],
+        "per:other_family": ["PERSON:PERSON"],
+        "per:charges": ["PERSON:CRIMINAL_CHARGE"],
+        "org:alternate_names": [
+            "ORGANIZATION:ORGANIZATION",
+            "ORGANIZATION:MISC"
+        ],
+        "org:political/religious_affiliation": [
+            "ORGANIZATION:RELIGION",
+            "ORGANIZATION:IDEOLOGY"
+        ],
+        "org:top_members/employees": ["ORGANIZATION:PERSON"],
+        "org:number_of_employees/members": ["ORGANIZATION:NUMBER"],
+        "org:members": ["ORGANIZATION:ORGANIZATION", "ORGANIZATION:COUNTRY"],
+        "org:member_of": [
+            "ORGANIZATION:ORGANIZATION",
+            "ORGANIZATION:COUNTRY",
+            "ORGANIZATION:LOCATION",
+            "ORGANIZATION:STATE_OR_PROVINCE"
+        ],
+        "org:subsidiaries": [
+            "ORGANIZATION:ORGANIZATION",
+            "ORGANIZATION:LOCATION"
+        ],
+        "org:parents": ["ORGANIZATION:ORGANIZATION", "ORGANIZATION:COUNTRY"],
+        "org:founded_by": ["ORGANIZATION:PERSON"],
+        "org:founded": ["ORGANIZATION:DATE"],
+        "org:dissolved": ["ORGANIZATION:DATE"],
+        "org:country_of_headquarters": ["ORGANIZATION:COUNTRY"],
+        "org:stateorprovince_of_headquarters": ["ORGANIZATION:STATE_OR_PROVINCE"],
+        "org:city_of_headquarters": [
+            "ORGANIZATION:CITY",
+            "ORGANIZATION:LOCATION"
+        ],
+        "org:shareholders": [
+            "ORGANIZATION:PERSON",
+            "ORGANIZATION:ORGANIZATION"
+        ],
+        "org:website": ["ORGANIZATION:URL"]
+    }
+}

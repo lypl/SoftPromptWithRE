@@ -1,0 +1,150 @@
+{
+    "model_type": "roberta",
+    "model_name_or_path": "roberta-large-mnli", 
+    "wrapper_type": "sequence_classifier", 
+    "dataset_name": "retacred", 
+    "max_seq_length": 150, 
+    "relvec_construct_mode": "from_manT",
+    "prompt_type": "relvec",
+    "max_num_relvec": 500,
+    "relations_data_dir_parent": "os.path.join(os.getcwd(), 'datasets')", 
+    "relations_data_name": "retacred_manT", 
+    "use_rel_embedding": "False",
+    "rel_id2embeddings_id_path": "os.path.join(os.getcwd(), 'datasets', 'retacred', 'rel2EmbeddingsIdx.json')",
+    "rel_embeddings_path": "os.path.join(os.getcwd(), 'datasets', 'retacred', 'rel_embeddings.npy')",
+    "valid_conditions": {
+        "no_relation": [],
+        "org:members": [
+            "ORGANIZATION:ORGANIZATION",
+            "ORGANIZATION:COUNTRY"
+        ],
+        "per:siblings": [
+            "PERSON:PERSON"
+        ],
+        "per:spouse": [
+            "PERSON:PERSON"
+        ],
+        "org:country_of_branch": [
+            "ORGANIZATION:COUNTRY"
+        ],
+        "per:country_of_death": [
+            "PERSON:COUNTRY"
+        ],
+        "per:parents": [
+            "PERSON:PERSON"
+        ],
+        "per:stateorprovinces_of_residence": [
+            "PERSON:STATE_OR_PROVINCE"
+        ],
+        "org:top_members/employees": [
+            "ORGANIZATION:PERSON"
+        ],
+        "org:dissolved": [
+            "ORGANIZATION:DATE"
+        ],
+        "org:number_of_employees/members": [
+            "ORGANIZATION:NUMBER"
+        ],
+        "per:stateorprovince_of_death": [
+            "PERSON:STATE_OR_PROVICE"
+        ],
+        "per:origin": [
+            "PERSON:NATIONALITY",
+            "PERSON:COUNTRY",
+            "PERSON:LOCATION"
+        ],
+        "per:children": [
+            "PERSON:PERSON"
+        ],
+        "org:political/religious_affiliation": [
+            "ORGANIZATION:RELIGION",
+            "ORGANIZATION:IDEOLOGY"
+        ],
+        "per:city_of_birth": [
+            "PERSON:CITY"
+        ],
+        "per:title": [
+            "PERSON:TITLE"
+        ],
+        "org:shareholders": [
+            "ORGANIZATION:PERSON",
+            "ORGANIZATION:ORGANIZATION"
+        ],
+        "per:employee_of": [
+            "PERSON:ORGANIZATION"
+        ],
+        "org:member_of": [
+            "ORGANIZATION:ORGANIZATION",
+            "ORGANIZATION:COUNTRY",
+            "ORGANIZATION:LOCATION",
+            "ORGANIZATION:STATE_OR_PROVINCE"
+        ],
+        "org:founded_by": [
+            "ORGANIZATION:PERSON"
+        ],
+        "per:countries_of_residence": [
+            "PERSON:COUNTRY",
+            "PERSON:NATIONALITY"
+        ],
+        "per:other_family": [
+            "PERSON:PERSON"
+        ],
+        "per:religion": [
+            "PERSON:RELIGION"
+        ],
+        "per:identity": [
+            "PERSON:PERSON",
+            "PERSON:MISC"
+        ],
+        "per:date_of_birth": [
+            "PERSON:DATE"
+        ],
+        "org:city_of_branch": [
+            "ORGANIZATION:CITY",
+            "ORGANIZATION:LOCATION"
+        ],
+        "org:alternate_names": [
+            "ORGANIZATION:ORGANIZATION",
+            "ORGANIZATION:MISC"
+        ],
+        "org:website": [
+            "ORGANIZATION:URL"
+        ],
+        "per:cause_of_death": [
+            "PERSON:CAUSE_OF_DEATH"
+        ],
+        "org:stateorprovince_of_branch": [
+            "ORGANIZATION:STATE_OR_PROVINCE"
+        ],
+        "per:schools_attended": [
+            "PERSON:ORGANIZATION"
+        ],
+        "per:country_of_birth": [
+            "PERSON:COUNTRY"
+        ],
+        "per:date_of_death": [
+            "PERSON:DATE"
+        ],
+        "per:city_of_death": [
+            "PERSON:CITY",
+            "PERSON:LOCATION"
+        ],
+        "org:founded": [
+            "ORGANIZATION:DATE"
+        ],
+        "per:cities_of_residence": [
+            "PERSON:CITY",
+            "PERSON:LOCATION"
+        ],
+        "per:age": [
+            "PERSON:NUMBER",
+            "PERSON:DURATION"
+        ],
+        "per:charges": [
+            "PERSON:CRIMINAL_CHARGE"
+        ],
+        "per:stateorprovince_of_birth": [
+            "PERSON:STATE_OR_PROVINCE"
+        ]
+    }
+}

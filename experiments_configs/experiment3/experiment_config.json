@@ -1,0 +1,26 @@
+{
+    
+    "REdataset_dir_parent": "os.path.join(os.getcwd(), 'datasets')",
+    "REdataset_name": "TACRED",
+    "load_REdata_type": "train/dev/test",
+    
+    "num_train_examples":10,
+    "num_dev_examples":5,
+    "num_test_examples":3,
+    "num_all_examples": 100,
+    
+    "NLIWrapper_config_file_path": "os.path.join(os.getcwd(), 'experiments_configs', 'experiment3', 'NLIWrapperConfig.json')",
+    "NLIEvalConfig_config_file_path": "os.path.join(os.getcwd(), 'experiments_configs', 'experiment3', 'NLIEvalConfig.json')",
+    "NLITrainConfig_config_file_path": "os.path.join(os.getcwd(), 'experiments_configs', 'experiment3', 'NLITrainConfig.json')",
+    
+    "RE_result_dir": "os.path.join(os.getcwd(), 'experiments_results')",
+
+    "experiment_info": {
+        "name": "experiment_3",
+        "setting": "zero-shot_with_prompt",
+        "model_name":"roberta-large-mnli",
+        "using_RE_dataset": "TACRED",
+        "get_template_method": "prompt",
+        "template_file_for_zero-shot": "TACRED_manT"
+    } 
+}

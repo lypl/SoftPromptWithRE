@@ -1,0 +1,289 @@
+[
+    {
+        "example_info": {
+            "context": [
+                "The Abu Sayyaf has been on the run from a military offensive launched after they kidnapped Italian aid worker Eugenio Vagni in January ."
+            ],
+            "label": "per:origin",
+            "obj": "Italian",
+            "subj": "Eugenio Vagni"
+        },
+        "top-k_res": [
+            "per:origin",
+            0.8269463181495667
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Investigators said that with Tuesday 's arrests they are closing in on Matteo Messina Denaro , a fugitive who is among a handful of mobsters vying to take over the Sicilian Mafia ."
+            ],
+            "label": "per:employee_of",
+            "obj": "Sicilian Mafia",
+            "subj": "Matteo Messina Denaro"
+        },
+        "top-k_res": [
+            "per:employee_of",
+            0.7623704671859741
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Actually , as independent journalist Nir Rosen described vividly and agonizingly in his indispensable book , In the Belly of the Green Bird , they involve a kind of energetic brutality that is only occasionally reported by an embedded American mainstream journalist ."
+            ],
+            "label": "NA",
+            "obj": "American",
+            "subj": "his"
+        },
+        "top-k_res": [
+            "NA",
+            1.0
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Blast in Japanese chemical plant kills four The blast occurred at around 8:50 am at a fluorine compound production plant operated by Morita Chemical Industries Co in Osaka 's Yodogawa Ward ."
+            ],
+            "label": "org:city_of_headquarters",
+            "obj": "Osaka",
+            "subj": "Morita Chemical Industries Co"
+        },
+        "top-k_res": [
+            "org:city_of_headquarters",
+            0.9870081543922424
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Jones began working for KBR as an administrative assistant in 2004 when she was 19 , but later transferred to Iraq with another Halliburton subsidiary , according to her lawsuit ."
+            ],
+            "label": "per:age",
+            "obj": "19",
+            "subj": "she"
+        },
+        "top-k_res": [
+            "per:age",
+            0.7817273736000061
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "During the latest round of meetings , the Obama administration raised the case of Alan Gross , a US citizen held in Cuba since December 2009 , and `` called for his immediate release , '' Crowley said ."
+            ],
+            "label": "per:countries_of_residence",
+            "obj": "Cuba",
+            "subj": "Alan Gross"
+        },
+        "top-k_res": [
+            "NA",
+            1.0
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "WASHINGTON 2009-06-09 19:30:20 UTC That 's the first time the industry has added workers in 10 months , said Hudson Riehle , senior vice president for research at the National Restaurant Association ."
+            ],
+            "label": "org:top_members/employees",
+            "obj": "Hudson Riehle",
+            "subj": "National Restaurant Association"
+        },
+        "top-k_res": [
+            "org:top_members/employees",
+            0.8967479467391968
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "She was in her early teens when her mom told her dad he could n't see his daughters if he continued taking drugs ."
+            ],
+            "label": "per:parents",
+            "obj": "he",
+            "subj": "She"
+        },
+        "top-k_res": [
+            "per:children",
+            0.7129021883010864
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "But outside of the courtroom , Debra Oliver , the child 's grandmother , accused the county 's Child Protective Services of being negligent in Tamaihia 's care and culpable in her death ."
+            ],
+            "label": "per:other_family",
+            "obj": "Debra Oliver",
+            "subj": "Tamaihia"
+        },
+        "top-k_res": [
+            "per:other_family",
+            0.9705708622932434
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Alessi said that she was Catholic but that she had long ago lost her illusions ."
+            ],
+            "label": "per:religion",
+            "obj": "Catholic",
+            "subj": "Alessi"
+        },
+        "top-k_res": [
+            "per:religion",
+            0.9449924230575562
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "It is the first effort of its kind by an American Indian tribe , said Jacqueline Johnson , executive director of the National Congress of American Indians ."
+            ],
+            "label": "org:top_members/employees",
+            "obj": "Jacqueline Johnson",
+            "subj": "National Congress of American Indians"
+        },
+        "top-k_res": [
+            "org:top_members/employees",
+            0.9768737554550171
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "In November , Wen 's sister-in-law Xie Caiping , 46 , was sentenced to 18 years in prison on charges of running illegal gambling dens and drug dealing ."
+            ],
+            "label": "per:other_family",
+            "obj": "Wen",
+            "subj": "Xie Caiping"
+        },
+        "top-k_res": [
+            "per:other_family",
+            0.9912346601486206
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Aquash , a member of the Mi ` kmaq tribe of Nova Scotia , was 30 when she died ."
+            ],
+            "label": "per:stateorprovince_of_death",
+            "obj": "Mi",
+            "subj": "Aquash"
+        },
+        "top-k_res": [
+            "NA",
+            1.0
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Rallying his supporters among the `` Young Patriots '' , he dismissed the threat to march on the television station , and mocked Ouattara 's supporters ."
+            ],
+            "label": "per:employee_of",
+            "obj": "`` Young Patriots",
+            "subj": "his"
+        },
+        "top-k_res": [
+            "per:employee_of",
+            0.9245055317878723
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "`` We 're writing history here , '' said Nell Minow , cofounder of the Corporate Library , a corporate governance research firm in Portland , Maine ."
+            ],
+            "label": "org:city_of_headquarters",
+            "obj": "Portland",
+            "subj": "Corporate Library"
+        },
+        "top-k_res": [
+            "org:city_of_headquarters",
+            0.9904224872589111
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Just as the Japanese learned to make cars in America without Japanese workers , Indian vendors are learning to outsource without Indians , said Dennis McGuire , chairman of TPI , a Texas-based consultancy that focuses on outsourcing ."
+            ],
+            "label": "org:country_of_headquarters",
+            "obj": "America",
+            "subj": "TPI"
+        },
+        "top-k_res": [
+            "org:country_of_headquarters",
+            0.9276199340820312
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "The detainee 's wife , Judy Gross , wrote to Cuban leader Raul Castro in August to express regret for her husband 's work in Cuba ."
+            ],
+            "label": "per:countries_of_residence",
+            "obj": "Cuba",
+            "subj": "her husband"
+        },
+        "top-k_res": [
+            "per:countries_of_residence",
+            0.6547090411186218
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "com The Criminal Court Wednesday acquitted Prachai Leophairatana and his four younger siblings of siphoning off 956.8 million baht from Thai Petrochemical Industry Plc ( TPI ) when the company underwent rehabilitation ."
+            ],
+            "label": "org:alternate_names",
+            "obj": "TPI",
+            "subj": "Thai Petrochemical Industry Plc"
+        },
+        "top-k_res": [
+            "org:alternate_names",
+            0.9852263331413269
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "Ecoffey told jurors that he and another federal agent met with Graham in April 1994 in Yellowknife , the city in northwest Canada where Graham lived at the time ."
+            ],
+            "label": "per:countries_of_residence",
+            "obj": "Canada",
+            "subj": "Graham"
+        },
+        "top-k_res": [
+            "per:countries_of_residence",
+            0.929378867149353
+        ]
+    },
+    {
+        "example_info": {
+            "context": [
+                "A new distribution company , Tribeca Film , founded by the festival 's parent company Tribeca Enterprises , will make a dozen films -- including Whitecross ' directorial debut `` sex & drugs & rock & roll '' -- available on TV via video-on-demand in some 40 million homes ."
+            ],
+            "label": "org:subsidiaries",
+            "obj": "Tribeca Film",
+            "subj": "Tribeca Enterprises"
+        },
+        "top-k_res": [
+            "org:members",
+            0.9519943594932556
+        ]
+    }
+]
+
+{
+    "f1-score": 0.7777777777777778,
+    "precision": 0.7777777777777778,
+    "recall": 0.7777777777777778,
+    "top-1": 0.8421052631578947
+}

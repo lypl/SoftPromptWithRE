@@ -1,0 +1,13 @@
+{
+    "learning_rate": 3e-3, 
+    "eval_step": 10, 
+    "warmup_proportion": 0.1, 
+    "save_optiprompt_dir_parent": "os.path.join(os.getcwd(), 'experiments_results')", 
+    "max_step": -1, 
+    "num_train_epoch": 10, 
+    "train_batch_size": 16, 
+    "eval_batch_size": 8,
+    "check_step": 10, 
+    "gradient_accumulation": 1,
+    "seed": 6
+}
