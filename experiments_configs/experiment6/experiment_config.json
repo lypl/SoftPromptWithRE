@@ -1,6 +1,6 @@
 {
     
-    "REdataset_dir_parent": "os.path.join(os.getcwd(), 'datasets')",
+    "REdataset_dir_parent": "os.path.join(os.getcwd(), 'datasets', 'new')",
     "REdataset_name": "tacrev",
     "load_REdata_type": "train/dev/test",
     

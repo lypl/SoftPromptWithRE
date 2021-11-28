@@ -320,7 +320,18 @@ class NLIRelationWrapper():
         if self.config.use_marker:
             assert((self.config.marker_name is not None) and (self.config.marker_position is not None))
             assert(self.config.marker_name in self.marker_types and self.config.marker_position in ["context", "both"])
-            examples.context = self.get_marked_sentence(example, self.config.marker_position)[0]
+            
+            ctx_type = None
+            if self.config.marker_name == "entity_marker":
+                ctx_type = "entity_marker_context_list"
+            elif self.config.marker_name == "entity_marker_punct":
+                ctx_type = "entity_marker_punct_context_list"
+            elif self.config.marker_name == "typed_marker":
+                ctx_type = "typed_marker_context_list"
+            elif self.config.marker_name == "typed_marker_punct":
+                ctx_type = "typed_marker_punct_context_list"
+            
+            examples.context = example.meta[ctx_type]
         if mode == 0:
             # 不tuning soft_template
             for template in self.template_list:

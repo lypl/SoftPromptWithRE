@@ -17,7 +17,7 @@ import wandb
 
 from utils import save_result_for_a_experiment
 from load_config import NLIEVAL_CONFIG, NLITRAIN_CONFIG, NLIWRAPPER_CONFIG, load_config_from_file, construct_config
-from load_REdata2example import load_examples, PROCESSORS, SET_TYPES, save_inputExample_to_file
+from load_REdata2example import load_examples, PROCESSORS, SET_TYPES
 from load_relation import get_relations
 from using_wrapper_method import NLIforward, NLIEvalConfig, prompt_tuning, NLITrainConfig
 import numpy as np
@@ -105,22 +105,16 @@ if __name__ == '__main__':
 
 
                 # 这里仅进行一次，之后都从文件里读
-                train_data = load_examples(args["REdataset_name"], REDataset_dir, "train")
-                dev_data = load_examples(args["REdataset_name"], REDataset_dir, "dev")
-                test_data = load_examples(args["REdataset_name"], REDataset_dir, "test")
-                save_inputExample_to_file(train_data, os.path.join(os.getcwd(), "datastes", args["REdataset_name"], "add_entity_type_version", "train.txt"))
-                save_inputExample_to_file(dev_data, os.path.join(os.getcwd(), "datastes", args["REdataset_name"], "add_entity_type_version", "dev.txt"))
-                save_inputExample_to_file(test_data, os.path.join(os.getcwd(), "datastes", args["REdataset_name"], "add_entity_type_version", "test.txt"))
-                pause()
+                
                 # 读数据从文件里直接读，不要每次加载，因为进行标注了所以方便重新写
                 # 使用small_data进行model方法检测,
-                # train_data = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=200)
-                # dev_data = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=200)
-                # test_data = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=200)
+                train_data = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=200)
+                dev_data = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=200)
+                test_data = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=200)
                 # train_data = train_data[:100]
                 # dev_data = dev_data[:50]
                 # test_data = test_data[:30]
-                # pause()
+                pause()
                     
                 # for few-shot
                 # train_data = load_examples(args["REdataset_name"], REDataset_dir, "train", args["num_train_examples"])

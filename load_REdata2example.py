@@ -1,7 +1,6 @@
 """ This code load dataset and construct coarse InputExample from original dataset """
 
 import json
-from stanfordcorenlp import StanfordCoreNLP
 from operator import truediv
 import os
 import random
@@ -15,7 +14,7 @@ from numpy.core.numeric import allclose
 from utils import InputExample, get_marked_sentence, get_entity_type
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.INFO)
 logger = logging.getLogger(__name__) 
-nlp = StanfordCoreNLP(os.path.join(os.getcwd(), "stanford-corenlp-4.3.2"))
+
 rules = defaultdict
 # 增加dataset时这里要改 …… hard code
 rules = {
@@ -175,31 +174,45 @@ class TACREDProcessor(DataProcessor):
             context = " ".join(line["token"]).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]"), # line["token"]: List[token]
             label = line["relation"] # example with multiple label,数据集中每条数据仅有一个label，但运算结果可显示多个可能的label ；若有些数据集中是多label的，在这里label: List[str]
             pair_type = rules.get(label, None)
-            """
-            这里由新数据集给出
-            subj_types: List = nlp.ner(subj) # [('Kosgi', 'PERSON'), ('Santosh', 'PERSON'), ('sent', 'O')]
-            subj_type = get_entity_type(subj_types, pair_type, "subj")
-            assert(subj_type is not None)
-
-            obj_types: List = nlp.ner(obj) 
-            obj_type = get_entity_type(obj_types, pair_type, "obj")
-            assert(obj_type is not None)
-            """
-            subj_st = line["h"]["pos"][0] # 可能要改
+        
+            
+            subj_st = line["h"]["pos"][0] 
             subj_ed = line["h"]["pos"][1]
             obj_st = line["t"]["pos"][0]
             obj_ed = line["t"]["pos"][1]
-            # print((subj, obj))
-            # print((subj_type, obj_type))
             
-            # 这里需要重新构造
-            entity_marker_context_list = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_type, obj_type, "entity_marker")
+            subj_coarse_grained_type = line["subj_coarse_grain_type"].lower()
+            obj_coarse_grained_type = line["obj_coarse_grain_type"].lower()
+
+            subj_fine_grained_res = line["subj_fine_res"]
+            obj_fine_grained_res = line["obj_fine_res"]
+
+            # 若存在description: 使用标注出的第一个description
+            subj_description: str = ""
+            if len(subj_fine_grained_res) > 0:
+                subj_description = subj_fine_grained_res[0][2]
+            obj_description: str = ""
+            if len(obj_fine_grained_res) > 0:
+                obj_description = obj_fine_grained_res[0][2]
+
+            # 若存在fine-grained_type: 全都要 会引入noise?
+            subj_fine_grained_type = []
+            for it in subj_fine_grained_res:
+                for ty in it:
+                    subj_fine_grained_type.append(ty)
+            obj_fine_grained_type = []
+            for it in obj_fine_grained_res:
+                for ty in it:
+                    obj_fine_grained_type.append(ty)
+            
+            # 这里只使用粗粒度的类别
+            entity_marker_context_list = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker")
            
-            entity_marker_punct_context_list = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_type, obj_type, "entity_marker_punct")
+            entity_marker_punct_context_list = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker_punct")
             
-            typed_marker_context_list = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_type, obj_type, "typed_marker")
+            typed_marker_context_list = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker")
             
-            typed_marker_punct_context_list = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_type, obj_type, "typed_marker_punct")
+            typed_marker_punct_context_list = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker_punct")
             
             # 后续list换成str的时候需要使用这样的replace函数
             # print(" ".join(entity_marker_context).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]"))
@@ -211,8 +224,10 @@ class TACREDProcessor(DataProcessor):
             meta = {
                 "subj_pos": line["h"]["pos"],
                 "obj_pos": line["t"]["pos"],
-                "subj_type": subj_type.lower(),
-                "obj_type": obj_type.lower(),
+                "subj_description": subj_description,
+                "obj_description": obj_description,
+                "subj_coarse_grained_type": subj_coarse_grained_type,
+                "obj_coarse_grained_type": obj_coarse_grained_type,
                 "entity_marker_context_list": entity_marker_context,
                 "entity_marker_punct_context_list": entity_marker_punct_context,
                 "typed_marker_context_list": typed_marker_context,
@@ -307,15 +322,9 @@ PROCESSORS = {
     # "TREX-1p": ,
     # "TREX-2p": ,
 }
-PROCESSORSFROMFILE = {
-    "TACRED": TACREDProcessorFromFile,
-    # "tacrev": ReTACREDProcessor,
-    # "retacred": ReTACREDProcessor,
-    # "few_rel": few_relProcessor,
 
-}
 
-def load_examples_from_ori_file(dataset_name, data_dir_parent: str, set_type: str, num_examples: int = None,
+def load_examples_from_file(dataset_name, data_dir_parent: str, set_type: str, num_examples: int = None,
                   num_train_examples: int = 0, num_dev_examples: int = 0, seed: int = 42, mode: str = None, sample_num_per_rel=None) -> List[InputExample]:
     """Load examples for a given dataset_name.
     because of few-shot setting, num_example & num_example_per_label need to be set
@@ -478,17 +487,6 @@ def load_examples_from_ori_file(dataset_name, data_dir_parent: str, set_type: st
         raise ValueError(f"'set_type' must be one of {SET_TYPES}, got '{set_type}' instead")
 
             
-def save_inputExample_to_file(examples: List[InputExample], write_path):
-    """ .txt """
-    with open(write_path, 'a', encoding='UTF-8') as f:
-        for ex in examples:
-            f.write(json.dumps(ex.__dict__()))
-            f.write("\n")
-
-def load_examples_from_new_file():
-    pass
-    
-
     
     
 
