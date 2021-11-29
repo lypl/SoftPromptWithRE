@@ -11,5 +11,14 @@
     "gradient_accumulation": 8,
     "seed": 6, 
     "device": "cuda:3",
-    "prompt_type": "relvec"
+    "prompt_type": "relvec",
+    "marker_learning_rate": 3e-5,
+    "marker_warmup_proportion": 0.1,
+    "marker_save_model_dir": "None to complete with full dataset",
+    "marker_weight_decay": 1e-2,
+    "marker_adam_epsilon": 1e-8,
+    "marker_num_train_epoch": 5,
+    "marker_train_batch_size": 32,
+    "marker_gradient_accumulation_steps": 2,
+    "marker_max_grad_norm": 1.0
 }

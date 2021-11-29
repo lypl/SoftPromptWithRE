@@ -36,13 +36,26 @@ def construct_config(config_type: str, content: Dict):
         # template_type = content["template_type"]
         # relvec_construct_mode = content["relvec_construct_mode"]
         prompt_type = content["prompt_type"]
-        # max_num_relvec = content["max_num_relvec"]
+        
+        marker_learning_rate = content["marker_learning_rate"]
+        marker_warmup_proportion = content["marker_warmup_proportion"]
+        marker_save_model_dir = content["marker_save_model_dir"]
+        marker_weight_decay = content["marker_weight_decay"]
+        marker_adam_epsilon = content["marker_adam_epsilon"]
+        marker_num_train_epoch = content["marker_num_train_epoch"]
+        marker_train_batch_size = content["marker_train_batch_size"]
+        marker_gradient_accumulation_steps = content["marker_gradient_accumulation_steps"]
+        marker_max_grad_norm = content["marker_max_grad_norm"]
+  
 
         return NLITrainConfig(device=device, save_optiprompt_dir=save_optiprompt_dir_parent, 
                               prompt_type=prompt_type, train_batch_size=train_batch_size, 
                               eval_batch_size=eval_batch_size, eval_step=eval_step, max_steps=max_step, num_train_epoch=num_train_epoch, 
                               gradient_accumulation_steps=gradient_accumulation, check_step=check_step, learning_rate=learning_rate, 
-                              warmup_proportion=warmup_proportion, seed=seed)
+                              warmup_proportion=warmup_proportion, seed=seed, marker_learning_rate=marker_learning_rate, 
+                              marker_warmup_proportion=marker_warmup_proportion, marker_save_model_dir=marker_save_model_dir,
+                              marker_weight_decay=marker_weight_decay, marker_adam_epsilon=marker_adam_epsilon, marker_num_train_epoch=marker_num_train_epoch,
+                              marker_train_batch_size=marker_train_batch_size, marker_gradient_accumulation_steps=marker_gradient_accumulation_steps)
     elif config_type == NLIWRAPPER_CONFIG:
         model_type = content["model_type"]
         model_name_or_path = content["model_name_or_path"]

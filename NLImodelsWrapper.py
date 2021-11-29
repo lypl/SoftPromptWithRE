@@ -1048,8 +1048,8 @@ class NLIRelationWrapper():
         precision = (train_labels == outputs).sum()/outputs.shape[0]
         return all_loss, precision
     
-    def marker_tuning_train(self, train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, eval_step: int,
-                     warmup_proportion: float, save_marker_token_data_dir: str, max_step: int, eval_batch_size: int, weight_decay: float,
+    def marker_tuning_train(self, train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, 
+                     warmup_proportion: float, save_marker_token_data_dir: str, eval_batch_size: int, weight_decay: float,
                      adam_epsilon, num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, 
                      max_grad_norm, topk: int = 1):
         # get_train_batch
@@ -1119,10 +1119,10 @@ class NLIRelationWrapper():
                 
         logger.info('Best micro_f1: %.2f'%(mx_res))
 
-    def evaluate_RE(eval_data: List[InputExample], device: str, per_gpu_eval_batch_size: int):
+    def evaluate_RE(eval_data: List[InputExample], device: str, per_gpu_eval_batch_size: int, topk=1):
         """ 使用当前的model预测RE的结果 """
         outputs = self.eval(eval_data, device, per_gpu_eval_batch_size)
-        all_topics = self.predict(outputs, 1)
+        all_topics = self.predict(outputs, topk)
         return f1_score(all_topics, eval_data, self.relation_name_list)
         
         

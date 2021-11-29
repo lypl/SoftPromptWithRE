@@ -67,6 +67,15 @@ class NLITrainConfig(NLIConfig):
         # self.max_num_relvec = max_num_relvec
         # self.relvec_construct_mode = relvec_construct_mode
         # self.template_type = template_type
+        self.marker_learning_rate = marker_learning_rate
+        self.marker_warmup_proportion = marker_warmup_proportion
+        self.marker_save_model_dir = marker_save_model_dir
+        self.marker_weight_decay = marker_weight_decay
+        self.marker_adam_epsilon = marker_adam_epsilon
+        self.marker_num_train_epoch = marker_num_train_epoch
+        self.marker_train_batch_size = marker_train_batch_size
+        self.marker_gradient_accumulation_steps = marker_gradient_accumulation_steps
+        self.marker_max_grad_norm = marker_max_grad_norm
         
         
 
@@ -199,7 +208,7 @@ def prompt_tuning(wrapper: NLIRelationWrapper, train_data: List[InputExample], d
 
     device = torch.device(config.device if config.device else "cuda" if torch.cuda.is_available() else "cpu")
     wrapper.model.to(device) # !!!
-    wandb.watch(wrapper.model, log="gradients", log_freq=1000)
+    wandb.watch(wrapper.model)
 
     # 用prompt重写所有relation的template
 
@@ -218,4 +227,32 @@ def prompt_tuning(wrapper: NLIRelationWrapper, train_data: List[InputExample], d
     # res_wrapper = load_optiprompt(config.save_optiprompt_dir, )
     # result = NLIforward(res_wrapper, test_data, EvalConfig)
     # return result
+
+def marker_tuning(wrapper: NLIRelationWrapper, train_data: List[InputExample], dev_data: List[InputExample], test_data: List[InputExample], 
+                  config: NLITrainConfig, EvalConfig: NLIEvalConfig) -> Dict:
+    random.seed(config.seed)
+    torch.manual_seed(config.seed)
+    torch.cuda.manual_seed(config.seed)
+
+    device = torch.device(config.device if config.device else "cuda" if torch.cuda.is_available() else "cpu")
+    wrapper.model.to(device) # !!!
+    wandb.watch(wrapper.model)
+    # dev_data是用来model selection的，test_data最终测试结果，尝试方法是否work时暂时不需要做test_data的部分，之后补上
+    wrapper.marker_tuning_train(train_data, dev_data, device, config.marker_learning_rate,  
+                         config.marker_warmup_proportion, 
+                         config.marker_save_model_dir, config.eval_batch_size, 
+                         config.marker_weight_decay,
+                         config.marker_adam_epsilon,
+                         config.marker_num_train_epoch, 
+                         config.marker_train_batch_size, 
+                         config.check_step, config.marker_gradient_accumulation_steps, 
+                         config.marker_max_grad_norm, topk=EvalConfig.topk)
+    
+    # 该wrappertuning后的model_parameters 已经保存了吗？⭐
+    """
+    train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, 
+                     warmup_proportion: float, save_marker_token_data_dir: str, eval_batch_size: int, weight_decay: float,
+                     adam_epsilon, num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, 
+                     max_grad_norm, topk: int = 1
+    """
 
