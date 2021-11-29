@@ -26,7 +26,7 @@ from transformers import __version__ as transformers_version
 
 import logging
 
-from utils import relation, InputExample, InputFeatures, DictDataset, np_softmax, load_vocab, top_k_accuracy, get_new_token
+from utils import relation, InputExample, InputFeatures, DictDataset, np_softmax, load_vocab, top_k_accuracy, get_new_token, f1_score
 from load_relation import  get_relations
 
 
@@ -671,9 +671,8 @@ class NLIRelationWrapper():
         preds: np.array = None # len(examples) * 3: label_nums
         all_indices, out_label_ids, question_ids = None, None, None
 
+        self.model.eval()
         for batch in tqdm(eval_dataloader, desc="Evaluating"):
-            self.model.eval()
-
             batch = {k: t.to(device) for k, t in batch.items()}
             labels = batch['labels'] # 一列，所有的feature的label按顺序的列表
             indices = batch['corresponce_to_InputExample_idx'] # 一列，所有的feature对应的example的idx按feature排列顺序的列表
@@ -859,7 +858,7 @@ class NLIRelationWrapper():
     #         index_list = None
     #     return filter_indices, index_list
 
-
+    """ 这个train的过程应该再斟酌一下，可以对比PTR """
     def tuning_train(self, train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, eval_step: int, prompt_type: str,
                      warmup_proportion: float, save_optiprompt_data_dir: str, max_step: int, eval_batch_size: int, 
                      num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, topk: int = 1):
@@ -1049,139 +1048,82 @@ class NLIRelationWrapper():
         precision = (train_labels == outputs).sum()/outputs.shape[0]
         return all_loss, precision
     
-    def marker_tuning_train(self, train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, eval_step: int, prompt_type: str,
-                     warmup_proportion: float, save_optiprompt_data_dir: str, max_step: int, eval_batch_size: int, 
-                     num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, topk: int = 1):
+    def marker_tuning_train(self, train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, eval_step: int,
+                     warmup_proportion: float, save_marker_token_data_dir: str, max_step: int, eval_batch_size: int, weight_decay: float,
+                     adam_epsilon, num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, 
+                     max_grad_norm, topk: int = 1):
         # get_train_batch
         train_dataset = self._generate_dataset(train_data, mode=1)
         train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=train_batch_size, num_workers=8, pin_memory=True)
-        # wandb.log({
-        #     "NLI_data": self.train_NL_data
-        # })
         
-        _, best_result = self.tuning_eval(dev_data, device, eval_batch_size, top_k=topk) # 先得manT初始化得到的prompt的结果
-        logger.info('!!! Best result for NLI train objective: %.2f .'%(best_result * 100))
-        # Add word embeddings to the optimizer
-        # optimizer = AdamW([{'params': self.model.embeddings.word_embeddings.parameters()}], lr=learning_rate, correct_bias=False)
+        no_decay = ['bias', 'LayerNorm.weight'] # 此处也要finetuning wordembedding里所有词，包括softprompt的部分，因为其初始化为一些hard token，所以这里tuning soft word相当于finetuning这些hard token
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay)],'weight_decay': weight_decay},
+            {'params': [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay)],'weight_decay': 0.0}
+        ]
+        optimizer = AdamW(
+            optimizer_grouped_parameters, 
+            lr=learning_rate, 
+            eps=adam_epsilon) # 这里correct_bias=True
 
-        optimizer = AdamW([{'params': self.base_model.embeddings.word_embeddings.parameters()}], lr=learning_rate, correct_bias=False)
-        t_total = len(train_dataloader) // gradient_accumulation_steps * num_train_epochs # 更新参数(embeddings)的次数
+        t_total = int(len(train_dataloader) * num_train_epochs  // gradient_accumulation_steps) # 更新参数(embeddings)的次数
         scheduler = get_linear_schedule_with_warmup(optimizer, int(t_total*warmup_proportion), t_total)
-
-        # Train!!!
-        step = 0
-        global_step = 0 # optimizer.zero_grad()的次数
-        tr_loss = 0
-
-        eval_step = len(train_dataloader) // 3 # 每个epoch进行3次保存softprompt
-
-        nb_tr_examples = 0
-
-        train_iterator = trange(int(num_train_epochs), desc="Epoch") # train_iterator 是epoch，封装在tqdm.trange里显示进度条
-
+        mx_res = 0.0
+        mx_epoch = -1
+        history_mi_f1 = []
+        history_ma_f1 = []
+        # Train!!! 每轮epoch做一次evaluate
+        train_iterator = trange(int(num_train_epochs), desc="Epoch")
         for epoch in train_iterator:
+            self.model.train()
+            self.model.zero_grad()
+            self.optimizer.zero_grad()
+            tr_loss = 0.0
+            global_step = 0 
             epoch_iterator = tqdm(train_dataloader, desc="Iteration")
-            for i, batch in enumerate(epoch_iterator):
-                if i == 0:
-                    print(batch["input_ids"].size())
-                self.model.train()
+            for step, batch in enumerate(epoch_iterator):
                 batch = {k: t.to(device) for k, t in batch.items()} # batch是一个字典dict, key: k(index), val: t(放入gpu,Inputfeature)
-
-                loss = self.train_step(batch)
+                loss = self.train_step(batch) # 这个loss 已经是每个example的mean了
                 if gradient_accumulation_steps > 1:
                     loss = loss / gradient_accumulation_steps
 
                 loss.backward()
-
                 tr_loss += loss.item()
-                nb_tr_examples += len(batch.items())
-                step += 1
-                # global_step += 1
                 
-                
-                
+
                 if (step + 1) % gradient_accumulation_steps == 0:
-                    optimizer.step()
-                    scheduler.step()
-                    optimizer.zero_grad()
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_grad_norm) # 梯度截断，
+                    self.optimizer.step()
+                    self.scheduler.step()
+                    self.optimizer.zero_grad() 
                     self.model.zero_grad() # ?optiT里的部分
                     global_step += 1
                     wandb.log({
-                        # "epoch": epoch,
-                        # "global_step": global_step,
-                        "train_loss": tr_loss / nb_tr_examples,
+                        "marker_train_loss": tr_loss / global_step,
                     }) 
-                    tr_loss = 0
-                    nb_tr_examples = 0
-                    # if eval_step > 0 and (step + 1) % eval_step != 0:
-                    #     tr_loss = 0
-                    #     nb_tr_examples = 0
-                    
-                    
-                    # set normal tokens' gradients to be zero ?optiT里的部分
-                    for p in self.base_model.embeddings.word_embeddings.parameters():
-                        # only update new tokens
-                        p.grad[:self.original_vocab_size, :] = 0.0
-                    # for p in self.model.embeddings.word_embeddings.parameters():
-                    #     p.grad[:original_vocab_size, :] = 0.0
 
-                if check_step > 0 and ((step + 1) % check_step == 0) and nb_tr_examples > 0:
-                    logger.info('Epoch=%d, iter=%d, loss=%.5f'%(_, i, tr_loss / nb_tr_examples))
-                    # sys.stdout.flush()
-                    # tr_loss = 0
-                    # nb_tr_examples = 0
+                if check_step > 0 and ((step + 1) % check_step == 0) and global_step > 0:
+                    logger.info('Epoch=%d, iter=%d, loss=%.5f'%(epoch+1, step+1, tr_loss / global_step))
 
-                if eval_step > 0 and (step + 1) % eval_step == 0:
-                    # Eval during training
-                    logger.info('step=%d, evaluating...'%(step))
-                    dev_loss, precision = self.tuning_eval(dev_data, device, eval_batch_size) # evaluate()
-                    if precision > best_result:
-                        wandb.run.summary["best_accuracy"] = precision
-                        best_result = precision
-                        logger.info('!!! Best valid for NLI_objective (epoch=%d): %.2f' %
-                            (_, best_result * 100))
-                        self.save_optiprompt(save_optiprompt_data_dir, self.original_vocab_size)
-                    wandb.log({
-                        # "epoch": epoch,
-                        # "step": step,
-                        "dev_loss": dev_loss,
-                        "dev_precision":precision
-                    }) 
-                    # "embeddings": self.base_model.embeddings.word_embeddings.parameters()
-                     
-                    # if (step + 1) % gradient_accumulation_steps == 0:
-                    #     tr_loss = 0
-                    #     nb_tr_examples = 0
+            # 每个epoch结束后进行evaluate
+            logger.info('End one epoch:{}, evaluating...'%(epoch+1))
+            micro_f1, f1_by_relation,  = self.evaluate_RE(dev_data, device, eval_batch_size) # evaluate()这里直接用RE的结果来查看tuning的结果
+            history_mi_f1.append(micro_f1)
+            history_ma_f1.append(f1_by_relation)
+            if micro_f1 > mx_res:
+                wandb.run.summary["best_accuracy"] = micro_f1
+                mx_res = micro_f1
+                mx_epoch = epoch + 1
+                # save ,small data don't need, compelete dataset need to write ⭐⭐⭐
+                
+        logger.info('Best micro_f1: %.2f'%(mx_res))
 
-                if 0 < max_step < global_step:
-                    epoch_iterator.close()
-                    break
-            # 每个epoch结束后进行测试，⭐ 处理提前结束
-            logger.info('step=%d, evaluating...'%(step))
-            dev_loss, precision = self.tuning_eval(dev_data, device, eval_batch_size) # evaluate()
-            print("evaluate train_label in dev data is: ")
-            print(precision)
-            if precision > best_result:
-                wandb.run.summary["best_accuracy"] = precision
-                best_result = precision
-                logger.info('!!! Best valid for NLI_objective (epoch=%d): %.2f' %
-                    (_, best_result * 100))
-                self.save_optiprompt(save_optiprompt_data_dir, self.original_vocab_size)
-                # "embeddings": self.base_model.embeddings.word_embeddings.parameters()
-                wandb.log({
-                    "train_loss": tr_loss / nb_tr_examples,
-                    "dev_loss": dev_loss,
-                    "dev_precision":precision
-                })
-            # 每次有embedding的准确率成为best时，进行RE eval，查看正确率变化及错误的样例
-            # 
-            
-
-            if 0 < max_step < global_step:
-                train_iterator.close()
-                break
-
-        logger.info('Best Valid for NLI_objective: %.2f'%(best_result*100))
+    def evaluate_RE(eval_data: List[InputExample], device: str, per_gpu_eval_batch_size: int):
+        """ 使用当前的model预测RE的结果 """
+        outputs = self.eval(eval_data, device, per_gpu_eval_batch_size)
+        all_topics = self.predict(outputs, 1)
+        return f1_score(all_topics, eval_data, self.relation_name_list)
+        
         
 

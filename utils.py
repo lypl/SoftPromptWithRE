@@ -376,3 +376,57 @@ def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type
                 ctx.append(token)
         return ctx, new_tokens
         
+
+
+def f1_score(res, examples, relations):
+    """ 这里还要具体查看并改改，用在结果对比的本地代码上 """
+    def judge(string):
+        if string in ["NA", "no_relation"]:
+            return 0
+        return 1
+    correct_by_relation = Counter()
+    guess_by_relation = Counter()
+    gold_by_relation = Counter()
+
+    for i in range(len(examples)):
+        guess = res[i][0]
+        gold = examples[i].label
+        
+        if judge(gold) == 0 and judge(guess) == 0:
+            continue
+        if judge(gold) == 0 and judge(guess) != 0:
+            guess_by_relation[guess] += 1
+        if judge(gold) != 0 and judge(guess) == 0:
+            gold_by_relation[gold] += 1
+        if judge(gold) != 0 and judge(guess) != 0:
+            guess_by_relation[guess] += 1
+            gold_by_relation[gold] += 1
+            if gold == guess:
+                correct_by_relation[gold] += 1
+
+    f1_by_relation = Counter()
+    recall_by_relation = Counter()
+    prec_by_relation = Counter()
+    for rel in relations:
+        # 不处理no_relation的情况
+        if judge(rel) == 0:
+            continue
+        recall = 0
+        if gold_by_relation[rel] > 0:
+            recall = correct_by_relation[rel] / gold_by_relation[rel]
+        precision = 0
+        if guess_by_relation[rel] > 0:
+            precision = correct_by_relation[rel] / guess_by_relation[rel]
+        if recall + precision > 0 :
+            f1_by_relation[rel] = 2 * recall * precision / (recall + precision)
+        recall_by_relation[rel] = recall
+        prec_by_relation[rel] = precision
+
+    micro_f1 = 0
+    if sum(guess_by_relation.values()) != 0 and sum(correct_by_relation.values()) != 0:
+        recall = sum(correct_by_relation.values()) / sum(gold_by_relation.values())
+        prec = sum(correct_by_relation.values()) / sum(guess_by_relation.values())    
+        micro_f1 = 2 * recall * prec / (recall+prec)
+
+    return micro_f1, f1_by_relation
+
