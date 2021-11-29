@@ -103,18 +103,21 @@ if __name__ == '__main__':
                       * 这些改进的方法：探讨为什么一些prompt的效果更好 -> 修改prompt的方法本质是prompt初始化方式，即搜索的图（few-shot learning 综述（在paper/slide里面）的搜索的三个图：优化搜索原/起点、剪枝搜索空间、...后续看这个图）"""
                 REDataset_dir = eval(args["REdataset_dir_parent"])
 
-
-                # 这里仅进行一次，之后都从文件里读
                 
-                # 读数据从文件里直接读，不要每次加载，因为进行标注了所以方便重新写
+                
                 # 使用small_data进行model方法检测,
-                train_data = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=200)
-                dev_data = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=200)
-                test_data = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=200)
+                train_data, train_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=200, use_marker=, marker_name=, marker_position=)
+                dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=200)
+                test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=200)
+                
+                
+                
+
                 # train_data = train_data[:100]
                 # dev_data = dev_data[:50]
                 # test_data = test_data[:30]
                 pause()
+
                     
                 # for few-shot
                 # train_data = load_examples(args["REdataset_name"], REDataset_dir, "train", args["num_train_examples"])
@@ -122,9 +125,37 @@ if __name__ == '__main__':
                 # test_data = load_examples(args["REdataset_name"], REDataset_dir, "test", args["num_test_examples"])
                 # step3: use wrapper with relations to get complete examples and get features
                 
+               
                 # REWrapper_args: NLIWrapperConfig, Wrapper_config_to_log: Dict
                 Wrapper_config_to_log, REWrapper_args = load_config_from_file(args["NLIWrapper_config_file_path"], NLIWRAPPER_CONFIG)
-                REWrapper: NLIRelationWrapper = NLIRelationWrapper(REWrapper_args)
+                if REWrapper_args.use_marker:
+                    tr_new_tokens = None
+                    dv_new_tokens = None
+                    te_new_tokens = None
+                    ty = None
+                    if REWrapper_args.marker_name == "entity_marker":
+                        ty = "all_entity_marker_new_tokens"
+                    elif REWrapper_args.marker_name == "entity_marker_punct":
+                        ty = "all_entity_marker_punct_new_tokens"
+                    elif REWrapper_args.marker_name == "typed_marker":
+                        ty = "all_typed_marker_new_tokens"
+                    elif REWrapper_args.marker_name == "typed_marker_punct":
+                        ty = "all_typed_marker_punct_new_tokens"
+                    tr_new_tokens = train_new_tokens[ty]
+                    dv_new_tokens = dev_new_tokens[ty]
+                    te_new_tokens = test_new_tokens[ty]
+
+                    new_tokens = [] # train/dev/test里的 把所有可能的new_token都弄出来
+                    for token in tr_new_tokens:
+                        if token not in new_tokens:
+                            new_tokens.append(token)
+                    for token in dv_new_tokens:
+                        if token not in new_tokens:
+                            new_tokens.append(token)
+                    for token in te_new_tokens:
+                        if token not in new_tokens:
+                            new_tokens.append(token)
+                REWrapper: NLIRelationWrapper = NLIRelationWrapper(REWrapper_args, new_tokens)
                 # NLITrainConfig_args:NLITrainConfig
                 Train_config_to_log, NLITrainConfig_args = load_config_from_file(args["NLITrainConfig_config_file_path"], NLITRAIN_CONFIG)
                 # hard code

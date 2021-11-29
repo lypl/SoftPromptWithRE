@@ -304,16 +304,21 @@ def get_new_token(vid, max_num_relvec):
 def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type, obj_type, marker_name):
         marker_types = ["entity_marker", "entity_marker_punct", "typed_marker", "typed_marker_punct"]
         ctx = []
+        new_tokens = []
         if marker_name == marker_types[0]:
             for i, token in enumerate(ori_context):
                 if i == subj_st:
                     ctx.append("[E1]")
+                    new_tokens.append("[E1]")
                 if i == subj_ed:
                     ctx.append("[/E1]")
+                    new_tokens.append("[/E1]")
                 if i == obj_st:
                     ctx.append("[E2]")
+                    new_tokens.append("[E2]")
                 if i == obj_ed:
                     ctx.append("[/E2]")
+                    new_tokens.append("[/E2]")
                 ctx.append(token)
         elif marker_name == marker_types[1]:
             for i, token in enumerate(ori_context):
@@ -331,15 +336,23 @@ def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type
                 if i == subj_st:
                     res = "[E1:{}]".format(subj_type)
                     ctx.append(res)
+                    if res not in new_tokens:
+                        new_tokens.append(res)
                 if i == subj_ed:
                     res = "[/E1:{}]".format(subj_type)
                     ctx.append(res)
+                    if res not in new_tokens:
+                        new_tokens.append(res)
                 if i == obj_st:
                     res = "[E2:{}]".format(obj_type)
                     ctx.append(res)
+                    if res not in new_tokens:
+                        new_tokens.append(res)
                 if i == obj_ed:
                     res = "[/E2:{}]".format(obj_type)
                     ctx.append(res)
+                    if res not in new_tokens:
+                        new_tokens.append(res)
                 ctx.append(token)
         elif marker_name == marker_types[3]:
             # 注意实体类型都是小写
@@ -347,15 +360,19 @@ def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type
                 if i == subj_st:
                     res = "@ * {}".format(subj_type)
                     ctx.append(res)
+                    if res not in new_tokens:
+                        new_tokens.append(res)
                 if i == subj_ed:
                     res = "* @"
                     ctx.append(res)
                 if i == obj_st:
                     res = "# ^ {}".format(obj_type)
                     ctx.append(res)
+                    if res not in new_tokens:
+                        new_tokens.append(res)
                 if i == obj_ed:
                     res = "^ #"
                     ctx.append(res)
                 ctx.append(token)
-        return ctx
+        return ctx, new_tokens
         
