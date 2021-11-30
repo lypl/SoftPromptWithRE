@@ -14,7 +14,7 @@
     "prompt_type": "relvec",
     "marker_learning_rate": 3e-5,
     "marker_warmup_proportion": 0.1,
-    "marker_save_model_dir": "None to complete with full dataset",
+    "marker_save_model_dir": "os.path.join(os.getcwd(), 'checkpoints')",
     "marker_weight_decay": 1e-2,
     "marker_adam_epsilon": 1e-8,
     "marker_num_train_epoch": 5,

@@ -19,7 +19,7 @@ from utils import save_result_for_a_experiment
 from load_config import NLIEVAL_CONFIG, NLITRAIN_CONFIG, NLIWRAPPER_CONFIG, load_config_from_file, construct_config
 from load_REdata2example import load_examples, PROCESSORS, SET_TYPES
 from load_relation import get_relations
-from using_wrapper_method import NLIforward, NLIEvalConfig, prompt_tuning, NLITrainConfig
+from using_wrapper_method import NLIforward, NLIEvalConfig, prompt_tuning, NLITrainConfig, marker_tuning
 import numpy as np
 from NLImodelsWrapper import NLIRelationWrapper, NLIWrapperConfig
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
@@ -169,6 +169,8 @@ if __name__ == '__main__':
                 Train_config_to_log["marker_position"] = new_args.marker_position
 
                 NLITrainConfig_args.save_optiprompt_dir = os.path.join(NLITrainConfig_args.save_optiprompt_dir, args["experiment_info"]["name"])
+                NLITrainConfig_args.marker_save_model_dir = os.path.join(NLITrainConfig_args.marker_save_model_dir, REWrapper_args.marker_name, args["REdataset_name"])
+                
                 # NLIEvalConfig_args:NLIEvalConfig
                 Eval_config_to_log, NLIEvalConfig_args = load_config_from_file(args["NLIEvalConfig_config_file_path"], NLIEVAL_CONFIG)
                 # hard code
@@ -193,8 +195,8 @@ if __name__ == '__main__':
                 wandb.init(
                     project="Verbalize_RE",
                     config=wdb_config,
-                    notes="prompt-tuning",
-                    name="use_all_data_check_wrong_samples_4epoch"
+                    notes="marker_tuning",
+                    name="entity_marker"
                 )
                 init_exp_info = {
                     "dataset_name": args["REdataset_name"],
@@ -212,13 +214,9 @@ if __name__ == '__main__':
                     forward_result = NLIforward(REWrapper, test_data, NLIEvalConfig_args, init_exp_info)
                     save_result_for_a_experiment(forward_result, eval(args["RE_result_dir"]), args["experiment_info"]["name"]) # just for debug
                     # pause()
-                prompt_tuning(REWrapper, train_data, dev_data, test_data, NLITrainConfig_args, NLIEvalConfig_args) # tuning softprompt, wrapperConfig里指定构造哪种prompt
-                #
-
-                res_wrapper = load_optiprompt(NLITrainConfig_args.save_optiprompt_dir, REWrapper_args)
-                forward_result = NLIforward(res_wrapper, test_data, NLIEvalConfig_args, tuning_exp_info)
-
-                save_result_for_a_experiment(forward_result, eval(args["RE_result_dir"]), args["experiment_info"]["name"])
+                # prompt_tuning(REWrapper, train_data, dev_data, test_data, NLITrainConfig_args, NLIEvalConfig_args) # tuning softprompt, wrapperConfig里指定构造哪种prompt
+                marker_result = marker_tuning(REWrapper, train_data, dev_data, test_data, NLITrainConfig_args, NLIEvalConfig_args)
+                save_result_for_a_experiment(marker_result, eval(args["RE_result_dir"]), args["experiment_info"]["name"], tag="marker_tuning")
                 wandb.finish()
                 
 

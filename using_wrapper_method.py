@@ -102,7 +102,34 @@ class NLIEvalConfig(NLIConfig):
         self.topk = topk
         self.use_threshold = None
 
+def get_wrong_examples(outputs, all_topics):
+    wrong_readable_results = []
+    wrong_label_cnt = {}
+    for i, res in enumerate(all_topics):
+        candidate_label_id = [] # List[tuple]
+        prob = outputs[i]
+        # print("prob's dim:")
+        # print(prob.shape)
+        _i = 0
+        for x in prob:
+            if x > 0.0:
+                candidate_label_id.append((_i, x))
+            _i += 1
+        to_write = {
+            "example_info": {
+                "subj": eval_data[i].subj,
+                "obj": eval_data[i].obj,
+                "context": eval_data[i].context,
+                "label": eval_data[i].label
+            },
+            "top-k_res": res,
+            "candidate_label_id": candidate_label_id
 
+        }
+        # to_write["top-k_res"]: List[(label, confidence), (), ()...]
+        if "NA" not in to_write["example_info"]["label"] and "no_relation" not in to_write["example_info"]["label"] and to_write["example_info"]["label"] not in to_write["top-k_res"][0]:
+            wrong_readable_results.append(to_write)
+    return wrong_readable_results
 def NLIforward(wrapper: NLIRelationWrapper, eval_data: List[InputExample], config: NLIEvalConfig, experiment_info: Dict = None) -> Dict:
     """
     Evaluate a NLImodel.
@@ -248,11 +275,14 @@ def marker_tuning(wrapper: NLIRelationWrapper, train_data: List[InputExample], d
                          config.check_step, config.marker_gradient_accumulation_steps, 
                          config.marker_max_grad_norm, topk=EvalConfig.topk)
     
-    # 该wrappertuning后的model_parameters 已经保存了吗？⭐
-    """
-    train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, 
-                     warmup_proportion: float, save_marker_token_data_dir: str, eval_batch_size: int, weight_decay: float,
-                     adam_epsilon, num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, 
-                     max_grad_norm, topk: int = 1
-    """
+    wrapper.model.load_state_dict(torch.load(os.path.join(save_model_parameter_dir, "parameter.pkl")))
+    test_micro_f1, test_f1_by_relation, outputs, topics = wrapper.evaluate_RE(test_data, device, EvalConfig.per_gpu_eval_batch_size, EvalConfig.topk) # evaluate()这里直接用RE的结果来查看tuning的结果
+    wrong_examples = get_wrong_examples(outputs, topics)
+    result = {
+        "micro_f1": test_micro_f1,
+        "f1_by_relation": test_f1_by_relation,
+        "wrong_examples": wrong_samples
+    }
+    return result
 
+   

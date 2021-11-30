@@ -203,17 +203,26 @@ def np_sigmoid(x, dim=-1):
     return 1 / (1 + np.exp(-x))
 
 
-def save_result_for_a_experiment(content, data_dir, exprement_name, for_tuning=False):
+def save_result_for_a_experiment(content, data_dir, exprement_name, tag=None):
     data_dir = os.path.join(data_dir, exprement_name)
-    if for_tuning:
-        path = os.path.join(os.getcwd(), "wrong_samples", "wrong_examples.txt")
-        with open(path, 'a', encoding='UTF-8') as f:
-            f.write("before tuning and after initialize results: ")
+    if tag == "marker_tuning":
+        now = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
+        info_str = ""
+        for k, v in content["experiment_info"].items():
+            info_str += "_"
+            if k == "epoch_num":
+                info_str += "epoch_"
+            info_str += str(v)
+            
+        file_name = "wrong_examples_" + now + info_str + ".txt"
+        wrong_examples_path = os.path.join(os.getcwd(), "wrong_samples", file_name) # hard code 
+        with open(wrong_examples_path, 'a', encoding='UTF-8') as f:
+            f.write(json.dumps(content['wrong_examples'], sort_keys=True, indent=4, separators=(',', ': ')))
             f.write("\n\n")
-            f.write(json.dumps(content['scores'], sort_keys=True, indent=4, separators=(',', ': ')))
-            f.write("\n\n")
+            f.write(json.dumps(content['f1_by_relation'], sort_keys=True, indent=4, separators=(',', ': ')))
+            f.write("\n")
+            f.write(json.dumps(content['micro_f1'], sort_keys=True, indent=4, separators=(',', ': ')))
         return
-    
     preds_data_path = os.path.join(data_dir, "preds.txt")
     metrics_result_data_path = os.path.join(data_dir, "results.txt")
     np.savetxt(preds_data_path, content['predictions'], fmt='%f', delimiter=', ')
@@ -240,9 +249,6 @@ def save_result_for_a_experiment(content, data_dir, exprement_name, for_tuning=F
         f.write("\n\n")
         f.write(json.dumps(content['scores'], sort_keys=True, indent=4, separators=(',', ': ')))
 
-
-def f1_score_(labels, preds, n_labels=42):
-    return f1_score(labels, preds, labels=list(range(1, n_labels)), average="micro")
 
 
 def precision_recall_fscore_(labels, preds, n_labels=42):

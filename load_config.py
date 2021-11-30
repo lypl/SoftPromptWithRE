@@ -39,7 +39,7 @@ def construct_config(config_type: str, content: Dict):
         
         marker_learning_rate = content["marker_learning_rate"]
         marker_warmup_proportion = content["marker_warmup_proportion"]
-        marker_save_model_dir = content["marker_save_model_dir"]
+        marker_save_model_dir = eval(content["marker_save_model_dir"])
         marker_weight_decay = content["marker_weight_decay"]
         marker_adam_epsilon = content["marker_adam_epsilon"]
         marker_num_train_epoch = content["marker_num_train_epoch"]

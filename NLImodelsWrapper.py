@@ -1049,9 +1049,9 @@ class NLIRelationWrapper():
         return all_loss, precision
     
     def marker_tuning_train(self, train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, 
-                     warmup_proportion: float, save_marker_token_data_dir: str, eval_batch_size: int, weight_decay: float,
-                     adam_epsilon, num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, 
-                     max_grad_norm, topk: int = 1):
+                            warmup_proportion: float, save_model_parameter_dir: str, eval_batch_size: int, weight_decay: float,
+                            adam_epsilon, num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, 
+                            max_grad_norm, topk: int = 1):
         # get_train_batch
         train_dataset = self._generate_dataset(train_data, mode=1)
         train_sampler = RandomSampler(train_dataset)
@@ -1108,22 +1108,25 @@ class NLIRelationWrapper():
 
             # 每个epoch结束后进行evaluate
             logger.info('End one epoch:{}, evaluating...'%(epoch+1))
-            micro_f1, f1_by_relation,  = self.evaluate_RE(dev_data, device, eval_batch_size) # evaluate()这里直接用RE的结果来查看tuning的结果
+            micro_f1, f1_by_relation, _, _ = self.evaluate_RE(dev_data, device, eval_batch_size) # evaluate()这里直接用RE的结果来查看tuning的结果
             history_mi_f1.append(micro_f1)
             history_ma_f1.append(f1_by_relation)
             if micro_f1 > mx_res:
                 wandb.run.summary["best_accuracy"] = micro_f1
                 mx_res = micro_f1
                 mx_epoch = epoch + 1
-                # save ,small data don't need, compelete dataset need to write ⭐⭐⭐
-                
-        logger.info('Best micro_f1: %.2f'%(mx_res))
+                torch.save(model.state_dict(), os.path.join(save_model_parameter_dir, "parameter.pkl"))
+
+               
+        logger.info('Train Best micro_f1: %.2f'%(mx_res))
+        
+        
 
     def evaluate_RE(eval_data: List[InputExample], device: str, per_gpu_eval_batch_size: int, topk=1):
         """ 使用当前的model预测RE的结果 """
         outputs = self.eval(eval_data, device, per_gpu_eval_batch_size)
         all_topics = self.predict(outputs, topk)
-        return f1_score(all_topics, eval_data, self.relation_name_list)
+        return f1_score(all_topics, eval_data, self.relation_name_list), outputs, all_topics
         
         
 
