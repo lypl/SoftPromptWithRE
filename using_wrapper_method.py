@@ -130,7 +130,7 @@ def get_wrong_examples(eval_data, outputs, all_topics):
             wrong_readable_results.append(to_write)
     return wrong_readable_results
 
-def NLIforward(wrapper: NLIRelationWrapper, eval_data: List[InputExample], config: NLIEvalConfig, experiment_info: Dict = None) -> Dict:
+def NLIforward(wrapper: NLIRelationWrapper, eval_data: List[InputExample], config: NLIEvalConfig) -> Dict:
     """
     Evaluate a NLImodel.
 
@@ -141,7 +141,7 @@ def NLIforward(wrapper: NLIRelationWrapper, eval_data: List[InputExample], confi
     :return: a dictionary containing the model's logits, predictions and (if any metrics are given) scores
     """
 
-    metrics = config.metrics if config.metrics else ['precision']
+    # metrics = config.metrics if config.metrics else ['precision']
     device = torch.device(config.device if config.device else "cuda" if torch.cuda.is_available() else "cpu")
     # wrapper.model.load_state_dict() 因为是用来测试初始化的结果，暂且不需要从某个checkpoint load
     wrapper.model.to(device)
@@ -150,10 +150,10 @@ def NLIforward(wrapper: NLIRelationWrapper, eval_data: List[InputExample], confi
     
     # outputs:num_example * num_relation
     result = defaultdict(str)
-    result['predictions'] = outputs
-    result['experiment_info'] = experiment_info
+    # result['predictions'] = outputs
+    # result['experiment_info'] = experiment_info
 
-    wrong_readable_results = get_wrong_examples(test_data, outputs, all_topics)
+    wrong_readable_results = get_wrong_examples(eval_data, outputs, all_topics)
 
     result['wrong_readable_predictions'] = wrong_readable_results
     result['micro_f1'] = micro_f1
@@ -200,16 +200,16 @@ def marker_tuning(wrapper: NLIRelationWrapper, train_data: List[InputExample], d
     wrapper.model.to(device) # !!!
     wandb.watch(wrapper.model)
     # dev_data是用来model selection的，test_data最终测试结果，尝试方法是否work时暂时不需要做test_data的部分，之后补上
-    wrapper.marker_tuning_train(train_data, dev_data, device, config.marker_learning_rate,  
-                         config.marker_warmup_proportion, 
-                         config.marker_save_model_dir, config.eval_batch_size, 
-                         config.marker_weight_decay,
-                         config.marker_adam_epsilon,
-                         config.marker_num_train_epoch, 
-                         config.marker_train_batch_size, 
-                         config.check_step, config.marker_max_grad_norm, 
-                         config.marker_gradient_accumulation_steps, 
-                         topk=EvalConfig.topk)
+    mx_res, mx_epoch = wrapper.marker_tuning_train(train_data, dev_data, device, config.marker_learning_rate,  
+                                                    config.marker_warmup_proportion, 
+                                                    config.marker_save_model_dir, config.eval_batch_size, 
+                                                    config.marker_weight_decay,
+                                                    config.marker_adam_epsilon,
+                                                    config.marker_num_train_epoch, 
+                                                    config.marker_train_batch_size, 
+                                                    config.check_step, config.marker_max_grad_norm, 
+                                                    config.marker_gradient_accumulation_steps, 
+                                                    topk=EvalConfig.topk)
     
     wrapper.model.load_state_dict(torch.load(os.path.join(config.marker_save_model_dir, "parameter.pkl")))
     test_micro_f1, test_f1_by_relation, outputs, topics = wrapper.evaluate_RE(test_data, device, EvalConfig.per_gpu_eval_batch_size, EvalConfig.topk) # evaluate()这里直接用RE的结果来查看tuning的结果
@@ -218,6 +218,8 @@ def marker_tuning(wrapper: NLIRelationWrapper, train_data: List[InputExample], d
         "micro_f1": test_micro_f1,
         "f1_by_relation": test_f1_by_relation,
         "wrong_examples": wrong_examples,
+        "tuning_mx_res": mx_res,
+        "tuning_mx_epoch": mx_epoch
     }
     return result
 

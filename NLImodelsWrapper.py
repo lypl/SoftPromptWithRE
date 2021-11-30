@@ -1112,6 +1112,7 @@ class NLIRelationWrapper():
                
         logger.info('Train Best micro_f1: %.2f'%(mx_res))
         logger.info('In epoch: %.0f get Best micro_f1.'%(mx_epoch))
+        return mx_res, mx_epoch
         
         
 

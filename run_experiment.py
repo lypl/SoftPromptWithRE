@@ -54,10 +54,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda:3', help='device idx')
     parser.add_argument('--num_train_epoch', type=int, default=None, help='num_train_epoch')
-    parser.add_argument('--experiment_id', type=str, default='experiment_3', help='run which experiment')
+    parser.add_argument('--experiment_id', type=str, default='3', help='run which experiment')
     parser.add_argument('--save_init_result', type=bool, default=False, help='save manT init res in wrong samples fold')
     parser.add_argument('--marker_name', type=str, default='entity_marker', help='use which marker')
-    parser.add_argument('--marker_position', type=str, default='context', help='where use marker')
+    parser.add_argument('--marker_position', type=str, default='context', help='where use marker') 
+    parser.add_argument('--marker_num_train_epoch', type=int, default=8, help='marker tuning epoch num') 
     new_args = parser.parse_args() # args.xxx
 
     experiments_dir = os.path.join(os.getcwd(), "experiments_configs")
@@ -68,7 +69,7 @@ if __name__ == '__main__':
         config_path = os.path.join(exprmt_dir, "experiment_config.json")
         with open(config_path, 'r', encoding='UTF-8') as f:
             args = json.load(f)
-            if args["experiment_info"]["name"] != new_args.experiment_id :
+            if args["experiment_info"]["name"] != ("experiment_" + new_args.experiment_id):
                 continue
             if args["experiment_info"]["get_template_method"] == "template_already_in_datasets":
                 # step1: load config.json -> for all varience to control the experiments
@@ -108,16 +109,10 @@ if __name__ == '__main__':
                 train_data, train_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=100)
                 dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=100)
                 test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=100)
-                train_data = train_data[:100]
-                dev_data = dev_data[:50]
-                test_data = test_data[:30]
+                # train_data = train_data[:100]
+                # dev_data = dev_data[:50]
+                # test_data = test_data[:30]
                 # pause()
-
-                # for few-shot
-                # train_data = load_examples(args["REdataset_name"], REDataset_dir, "train", args["num_train_examples"])
-                # dev_data = load_examples(args["REdataset_name"], REDataset_dir, "dev", args["num_dev_examples"])
-                # test_data = load_examples(args["REdataset_name"], REDataset_dir, "test", args["num_test_examples"])
-                # step3: use wrapper with relations to get complete examples and get features
                 
                 # REWrapper_args: NLIWrapperConfig, Wrapper_config_to_log: Dict
                 Wrapper_config_to_log, REWrapper_args = load_config_from_file(args["NLIWrapper_config_file_path"], NLIWRAPPER_CONFIG)
@@ -153,13 +148,14 @@ if __name__ == '__main__':
                 Train_config_to_log, NLITrainConfig_args = load_config_from_file(args["NLITrainConfig_config_file_path"], NLITRAIN_CONFIG)
                 # hard code
                 NLITrainConfig_args.device = new_args.device
-                NLITrainConfig_args.marker_name = new_args.marker_name
-                NLITrainConfig_args.marker_position = new_args.marker_position
-    
+                REWrapper_args.marker_name = new_args.marker_name
+                REWrapper_args.marker_position = new_args.marker_position
+                NLITrainConfig_args.marker_num_train_epoch = new_args.marker_num_train_epoch
                 NLITrainConfig_args.num_train_epoch = new_args.num_train_epoch
                 Train_config_to_log["num_train_epoch"] = new_args.num_train_epoch
                 Train_config_to_log["marker_name"] = new_args.marker_name
                 Train_config_to_log["marker_position"] = new_args.marker_position
+                Train_config_to_log["marker_num_train_epoch"] = new_args.marker_num_train_epoch
 
                 NLITrainConfig_args.save_optiprompt_dir = os.path.join(NLITrainConfig_args.save_optiprompt_dir, args["experiment_info"]["name"])
                 NLITrainConfig_args.marker_save_model_dir = os.path.join(NLITrainConfig_args.marker_save_model_dir, REWrapper_args.marker_name, args["REdataset_name"])
@@ -189,27 +185,33 @@ if __name__ == '__main__':
                     project="Verbalize_RE",
                     config=wdb_config,
                     notes="marker_tuning",
-                    name="entity_marker"
+                    name=REWrapper_args.marker_name
                 )
-                init_exp_info = {
+                # init_exp_info = {
+                #     "dataset_name": args["REdataset_name"],
+                #     "epoch_num": new_args.num_train_epoch,
+                #     "tuning_or_init": "init",
+                # }
+                # tuning_exp_info = {
+                #     "dataset_name": args["REdataset_name"],
+                #     "epoch_num": new_args.num_train_epoch,
+                #     "tuning_or_init": "tuning",
+                # }
+                exp_info = {
+                    "marker_name": REWrapper_args.marker_name,
                     "dataset_name": args["REdataset_name"],
-                    "epoch_num": new_args.num_train_epoch,
-                    "tuning_or_init": "init",
-                }
-                tuning_exp_info = {
-                    "dataset_name": args["REdataset_name"],
-                    "epoch_num": new_args.num_train_epoch,
-                    "tuning_or_init": "tuning",
+                    "epoch_num": NLITrainConfig_args.marker_num_train_epoch
                 }
 
                 # debug
                 if new_args.save_init_result:
-                    forward_result = NLIforward(REWrapper, test_data, NLIEvalConfig_args, init_exp_info)
-                    save_result_for_a_experiment(forward_result, eval(args["RE_result_dir"]), args["experiment_info"]["name"]) # just for debug
+                    forward_result = NLIforward(REWrapper, test_data, NLIEvalConfig_args)
+                    save_result_for_a_experiment(forward_result, eval(args["RE_result_dir"]), args["experiment_info"]["name"], exp_info) # just for debug
                     # pause()
                 # prompt_tuning(REWrapper, train_data, dev_data, test_data, NLITrainConfig_args, NLIEvalConfig_args) # tuning softprompt, wrapperConfig里指定构造哪种prompt
                 marker_result = marker_tuning(REWrapper, train_data, dev_data, test_data, NLITrainConfig_args, NLIEvalConfig_args)
-                save_result_for_a_experiment(marker_result, eval(args["RE_result_dir"]), args["experiment_info"]["name"], tag="marker_tuning")
+                
+                save_result_for_a_experiment(marker_result, eval(args["RE_result_dir"]), args["experiment_info"]["name"], exp_info, tag="marker_tuning")
                 wandb.finish()
                 
 

@@ -203,51 +203,62 @@ def np_sigmoid(x, dim=-1):
     return 1 / (1 + np.exp(-x))
 
 
-def save_result_for_a_experiment(content, data_dir, exprement_name, tag=None):
+def save_result_for_a_experiment(content, data_dir, exprement_name, exp_info, tag=None):
     data_dir = os.path.join(data_dir, exprement_name)
     if tag == "marker_tuning":
         now = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-        # info_str = ""
-        # for k, v in content["experiment_info"].items():
-        #     info_str += "_"
-        #     if k == "epoch_num":
-        #         info_str += "epoch_"
-        #     info_str += str(v)
+        info_str = ""
+        for k, v in exp_info.items():
+            info_str += "_"
+            if k == "epoch_num":
+                info_str += "tot_epoch_"
+            info_str += str(v)
             
-        file_name = "wrong_examples_" + now + ".txt"
+        file_name = "wrong_examples_" + now + info_str + "_tuning.txt"
         wrong_examples_path = os.path.join(os.getcwd(), "wrong_samples", file_name) # hard code 
         with open(wrong_examples_path, 'a', encoding='UTF-8') as f:
             f.write(json.dumps(content['wrong_examples'], sort_keys=True, indent=4, separators=(',', ': ')))
             f.write("\n\n")
+            f.write("f1_by_relation: \n")
             f.write(json.dumps(content['f1_by_relation'], sort_keys=True, indent=4, separators=(',', ': ')))
             f.write("\n")
+            f.write("micro_f1: ")
             f.write(json.dumps(content['micro_f1'], sort_keys=True, indent=4, separators=(',', ': ')))
+            f.write("\n")
+            f.write("tuning_mx_res: ")
+            f.write(json.dumps(content['tuning_mx_res'], sort_keys=True, indent=4, separators=(',', ': ')))
+            f.write("\n")
+            f.write("tuning_mx_epoch: ")
+            f.write(json.dumps(content['tuning_mx_epoch'], sort_keys=True, indent=4, separators=(',', ': ')))
+
         return
-    preds_data_path = os.path.join(data_dir, "preds.txt")
-    metrics_result_data_path = os.path.join(data_dir, "results.txt")
-    np.savetxt(preds_data_path, content['predictions'], fmt='%f', delimiter=', ')
-    with open(metrics_result_data_path, 'a', encoding='UTF-8') as f:
-        # f.write(json.dumps(content['readable_predictions'], sort_keys=True, indent=4, separators=(',', ': ')))
-        f.write("\n\n")
-        f.write(json.dumps(content['scores'], sort_keys=True, indent=4, separators=(',', ': ')))
+    # preds_data_path = os.path.join(data_dir, "preds.txt")
+    # metrics_result_data_path = os.path.join(data_dir, "results.txt")
+    # np.savetxt(preds_data_path, content['predictions'], fmt='%f', delimiter=', ')
+    # with open(metrics_result_data_path, 'a', encoding='UTF-8') as f:
+    #     # f.write(json.dumps(content['readable_predictions'], sort_keys=True, indent=4, separators=(',', ': ')))
+    #     f.write("\n\n")
+    #     f.write(json.dumps(content['scores'], sort_keys=True, indent=4, separators=(',', ': ')))
 
     now = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
     info_str = ""
-    for k, v in content["experiment_info"].items():
+    for k, v in exp_info.items():
         info_str += "_"
         if k == "epoch_num":
             info_str += "epoch_"
         info_str += str(v)
         
-    file_name = "wrong_examples_" + now + info_str + ".txt"
+    file_name = "wrong_examples_" + now + info_str + "_init.txt"
            
     wrong_examples_path = os.path.join(os.getcwd(), "wrong_samples", file_name) # hard code 
     with open(wrong_examples_path, 'a', encoding='UTF-8') as f:
         f.write(json.dumps(content['wrong_readable_predictions'], sort_keys=True, indent=4, separators=(',', ': ')))
         f.write("\n\n")
-        f.write(json.dumps(content['wrong_label_cnt'], sort_keys=True, indent=4, separators=(',', ': ')))
-        f.write("\n\n")
-        f.write(json.dumps(content['scores'], sort_keys=True, indent=4, separators=(',', ': ')))
+        f.write("micro_f1: ")
+        f.write(json.dumps(content['micro_f1'], sort_keys=True, indent=4, separators=(',', ': ')))
+        f.write("\n")
+        f.write("f1_by_relation: \n")
+        f.write(json.dumps(content['f1_by_relation'], sort_keys=True, indent=4, separators=(',', ': ')))
 
 
 

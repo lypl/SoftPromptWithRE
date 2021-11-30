@@ -324,7 +324,22 @@ class ReTACREDProcessor(DataProcessor):
             subj = line["h"]["name"]
             obj = line["t"]["name"]
             ori_tokens = line["token"]
-            context = " ".join(line["token"]).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]") # line["token"]: List[token]
+            context = " ".join(line["token"]).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]").replace("-LCB-", "{").replace("-RCB-", "}") # line["token"]: List[token]
+            def convert_token(token):
+                """ Convert PTB tokens to normal tokens """
+                if (token.lower() == '-lrb-'):
+                    return '('
+                elif (token.lower() == '-rrb-'):
+                    return ')'
+                elif (token.lower() == '-lsb-'):
+                    return '['
+                elif (token.lower() == '-rsb-'):
+                    return ']'
+                elif (token.lower() == '-lcb-'):
+                    return '{'
+                elif (token.lower() == '-rcb-'):
+                    return '}'
+                return token
             label = line["relation"] # example with multiple label,数据集中每条数据仅有一个label，但运算结果可显示多个可能的label ；若有些数据集中是多label的，在这里label: List[str]
             pair_type = rules.get(label, None)
         
@@ -385,10 +400,10 @@ class ReTACREDProcessor(DataProcessor):
                 "obj_description": obj_description,
                 "subj_coarse_grained_type": subj_coarse_grained_type,
                 "obj_coarse_grained_type": obj_coarse_grained_type,
-                "entity_marker_context_list": entity_marker_context,
-                "entity_marker_punct_context_list": entity_marker_punct_context,
-                "typed_marker_context_list": typed_marker_context,
-                "typed_marker_punct_context_list": typed_marker_punct_context,
+                "entity_marker_context_list": entity_marker_context_list,
+                "entity_marker_punct_context_list": entity_marker_punct_context_list,
+                "typed_marker_context_list": typed_marker_context_list,
+                "typed_marker_punct_context_list": typed_marker_punct_context_list,
             }
             example = InputExample(i, subj, obj, ori_tokens, context, label, pair_type=pair_type, meta=meta)
             examples.append(example)
@@ -405,7 +420,7 @@ class ReTACREDProcessor(DataProcessor):
             for token in typed_marker_punct_new_tokens:
                 if token not in all_typed_marker_punct_new_tokens:
                     all_typed_marker_punct_new_tokens.append(token)
-                    
+
         new_tokens = {
             "all_entity_marker_new_tokens": all_entity_marker_new_tokens,
             "all_entity_marker_punct_new_tokens": all_entity_marker_punct_new_tokens,
