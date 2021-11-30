@@ -70,17 +70,13 @@ def construct_config(config_type: str, content: Dict):
         # template_type = content["template_type"]
         relvec_construct_mode = content["relvec_construct_mode"]
         prompt_type = content["prompt_type"] 
-        use_rel_embedding = eval(content["use_rel_embedding"])
-        rel_id2embeddings_id_path = eval(content["rel_id2embeddings_id_path"])
-        rel_embeddings_path = eval(content["rel_embeddings_path"])
 
         use_marker = eval(content["use_marker"])
         marker_position = content["marker_position"]
         marker_name = content["marker_name"]
 
         return NLIWrapperConfig(model_type=model_type, model_name_or_path=model_name_or_path, wrapper_type=wrapper_type, dataset_name=dataset_name, max_seq_length=max_seq_length, 
-                                max_num_relvec=max_num_relvec, relations_data_dir=relations_data_dir, use_rel_embedding=use_rel_embedding, rel_id2embeddings_id_path=rel_id2embeddings_id_path,
-                                rel_embeddings_path=rel_embeddings_path,
+                                max_num_relvec=max_num_relvec, relations_data_dir=relations_data_dir, 
                                 relations_data_name=relations_data_name, prompt_type=prompt_type, relvec_construct_mode=relvec_construct_mode, valid_conditions=valid_conditions,
                                 use_marker=use_marker, marker_position=marker_position, marker_name=marker_name)
     else:

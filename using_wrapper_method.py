@@ -17,7 +17,7 @@ import numpy as np
 from sklearn.metrics import precision_recall_fscore_support
 
 from NLImodelsWrapper import NLIRelationWrapper
-from utils import InputExample, top_k_accuracy, find_optimal_threshold, apply_threshold, get_new_token
+from utils import InputExample, top_k_accuracy, apply_threshold, get_new_token
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,11 @@ class NLITrainConfig(NLIConfig):
     """Configuration for training a model."""
 
     def __init__(self, device, save_optiprompt_dir: str, prompt_type, train_batch_size: int = 8, eval_batch_size: int = 8, eval_step: int = 10,
-                 max_steps: int = -1, num_train_epoch: int = 3, gradient_accumulation_steps: int = 1, check_step: int = 10,
-                 learning_rate: float = 3e-3,  warmup_proportion: float = 0.1, seed: int = 42):
+                 max_steps: int = -1, num_train_epoch: int = 3, gradient_accumulation_steps: int = 1, check_step: int = 10, 
+                 learning_rate: float = 3e-3,  warmup_proportion: float = 0.1, seed: int = 42,
+                 marker_learning_rate=3e-5, marker_warmup_proportion=0.1, marker_save_model_dir=None,
+                 marker_weight_decay=1e-2, marker_adam_epsilon=1e-8, marker_num_train_epoch=5, marker_train_batch_size=32,
+                 marker_gradient_accumulation_steps=2, marker_max_grad_norm=1.0):
         """
         Create a new training config.
 
@@ -77,10 +80,6 @@ class NLITrainConfig(NLIConfig):
         self.marker_gradient_accumulation_steps = marker_gradient_accumulation_steps
         self.marker_max_grad_norm = marker_max_grad_norm
         
-        
-
-
-
 class NLIEvalConfig(NLIConfig):
     """Configuration for evaluating a model."""
 
@@ -102,7 +101,7 @@ class NLIEvalConfig(NLIConfig):
         self.topk = topk
         self.use_threshold = None
 
-def get_wrong_examples(outputs, all_topics):
+def get_wrong_examples(eval_data, outputs, all_topics):
     wrong_readable_results = []
     wrong_label_cnt = {}
     for i, res in enumerate(all_topics):
@@ -130,6 +129,7 @@ def get_wrong_examples(outputs, all_topics):
         if "NA" not in to_write["example_info"]["label"] and "no_relation" not in to_write["example_info"]["label"] and to_write["example_info"]["label"] not in to_write["top-k_res"][0]:
             wrong_readable_results.append(to_write)
     return wrong_readable_results
+
 def NLIforward(wrapper: NLIRelationWrapper, eval_data: List[InputExample], config: NLIEvalConfig, experiment_info: Dict = None) -> Dict:
     """
     Evaluate a NLImodel.
@@ -143,87 +143,22 @@ def NLIforward(wrapper: NLIRelationWrapper, eval_data: List[InputExample], confi
 
     metrics = config.metrics if config.metrics else ['precision']
     device = torch.device(config.device if config.device else "cuda" if torch.cuda.is_available() else "cpu")
-
+    # wrapper.model.load_state_dict() 因为是用来测试初始化的结果，暂且不需要从某个checkpoint load
     wrapper.model.to(device)
     # outputs = wrapper.predict(eval_data, config.device, config.per_gpu_eval_batch_size, config.topk)
-    outputs = wrapper.eval(eval_data, config.device, config.per_gpu_eval_batch_size)
+    micro_f1, f1_by_relation, outputs, all_topics = wrapper.evaluate_RE(eval_data, device, config.per_gpu_eval_batch_size, config.topk)
     
     # outputs:num_example * num_relation
     result = defaultdict(str)
     result['predictions'] = outputs
     result['experiment_info'] = experiment_info
 
-    # readable_predictions
-    all_topics = wrapper.predict(outputs, config.topk)
-    readable_results = []
-    wrong_readable_results = []
-    wrong_label_cnt = {}
-    for i, res in enumerate(all_topics):
-        candidate_label_id = [] # List[tuple]
-        prob = outputs[i]
-        # print("prob's dim:")
-        # print(prob.shape)
-        _i = 0
-        for x in prob:
-            if x > 0.0:
-                candidate_label_id.append((_i, x))
-            _i += 1
-        to_write = {
-            "example_info": {
-                "subj": eval_data[i].subj,
-                "obj": eval_data[i].obj,
-                "context": eval_data[i].context,
-                "label": eval_data[i].label
-            },
-            "top-k_res": res,
-            "candidate_label_id": candidate_label_id
+    wrong_readable_results = get_wrong_examples(test_data, outputs, all_topics)
 
-        }
-        readable_results.append(to_write)
-        # to_write["top-k_res"]: List[(label, confidence), (), ()...]
-        if "NA" not in to_write["example_info"]["label"] and "no_relation" not in to_write["example_info"]["label"] and to_write["example_info"]["label"] not in to_write["top-k_res"][0]:
-            wrong_readable_results.append(to_write)
-            if to_write["example_info"]["label"] not in wrong_label_cnt.keys():
-                wrong_label_cnt[to_write["example_info"]["label"]] = 1
-            else:
-                wrong_label_cnt[to_write["example_info"]["label"]] += 1
-
-
-    result['readable_predictions'] = readable_results
     result['wrong_readable_predictions'] = wrong_readable_results
-    result['wrong_label_cnt'] = wrong_label_cnt
+    result['micro_f1'] = micro_f1
+    result['f1_by_relation'] = f1_by_relation
 
-    labels = []
-    for data in eval_data:
-        labels.append(wrapper.rel2id[data.label])
-    # if config.use_threshold is None:
-    #     optimal_threshold, _ = find_optimal_threshold(labels, outputs)
-    #     output_ = apply_threshold(outputs, threshold=optimal_threshold)
-    # else:
-    #     output_ = outputs.argmax(-1)
-    output_ = outputs.argmax(-1)
-    pre, rec, f1, _ = precision_recall_fscore_support(labels, output_, average="micro", labels=list(range(1, len(labels))))
-    scores = {}
-    for metric in metrics:
-        if metric == "precision":
-            scores[metric] = pre
-        elif metric == "recall":
-            scores[metric] = rec
-        elif metric == "f1-score":
-            scores[metric] = f1
-        elif metric == "top-1":
-            scores[metric] = top_k_accuracy(outputs, labels, k=1)
-        elif metric == "top-3":
-            scores[metric] = top_k_accuracy(outputs, labels, k=3)
-        elif metric == "top-5":
-            scores[metric] = top_k_accuracy(outputs, labels, k=5)
-        elif metric == "top-curve":
-            scores[metric] = [top_k_accuracy(outputs, labels, k=i) for i in range(1, len(labels) + 1)]
-        else:
-            raise ValueError(f"Metric '{metric}' not implemented")
-
-    result['scores'] = scores
-    
     return result
 
 
@@ -272,16 +207,17 @@ def marker_tuning(wrapper: NLIRelationWrapper, train_data: List[InputExample], d
                          config.marker_adam_epsilon,
                          config.marker_num_train_epoch, 
                          config.marker_train_batch_size, 
-                         config.check_step, config.marker_gradient_accumulation_steps, 
-                         config.marker_max_grad_norm, topk=EvalConfig.topk)
+                         config.check_step, config.marker_max_grad_norm, 
+                         config.marker_gradient_accumulation_steps, 
+                         topk=EvalConfig.topk)
     
-    wrapper.model.load_state_dict(torch.load(os.path.join(save_model_parameter_dir, "parameter.pkl")))
+    wrapper.model.load_state_dict(torch.load(os.path.join(config.marker_save_model_dir, "parameter.pkl")))
     test_micro_f1, test_f1_by_relation, outputs, topics = wrapper.evaluate_RE(test_data, device, EvalConfig.per_gpu_eval_batch_size, EvalConfig.topk) # evaluate()这里直接用RE的结果来查看tuning的结果
-    wrong_examples = get_wrong_examples(outputs, topics)
+    wrong_examples = get_wrong_examples(test_data, outputs, topics)
     result = {
         "micro_f1": test_micro_f1,
         "f1_by_relation": test_f1_by_relation,
-        "wrong_examples": wrong_samples
+        "wrong_examples": wrong_examples,
     }
     return result
 

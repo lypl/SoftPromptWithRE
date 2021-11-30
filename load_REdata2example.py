@@ -11,7 +11,7 @@ import logging
 
 from numpy.core.numeric import allclose 
 
-from utils import InputExample, get_marked_sentence, get_entity_type
+from utils import InputExample, get_marked_sentence
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.INFO)
 logger = logging.getLogger(__name__) 
 
@@ -175,7 +175,7 @@ class TACREDProcessor(DataProcessor):
             subj = line["h"]["name"]
             obj = line["t"]["name"]
             ori_tokens = line["token"]
-            context = " ".join(line["token"]).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]")replace("-LCB-", "{").replace("-RCB-", "}") # line["token"]: List[token]
+            context = " ".join(line["token"]).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]").replace("-LCB-", "{").replace("-RCB-", "}") # line["token"]: List[token]
             def convert_token(token):
                 """ Convert PTB tokens to normal tokens """
                 if (token.lower() == '-lrb-'):
@@ -251,10 +251,10 @@ class TACREDProcessor(DataProcessor):
                 "obj_description": obj_description,
                 "subj_coarse_grained_type": subj_coarse_grained_type,
                 "obj_coarse_grained_type": obj_coarse_grained_type,
-                "entity_marker_context_list": entity_marker_context,
-                "entity_marker_punct_context_list": entity_marker_punct_context,
-                "typed_marker_context_list": typed_marker_context,
-                "typed_marker_punct_context_list": typed_marker_punct_context,
+                "entity_marker_context_list": entity_marker_context_list,
+                "entity_marker_punct_context_list": entity_marker_punct_context_list,
+                "typed_marker_context_list": typed_marker_context_list,
+                "typed_marker_punct_context_list": typed_marker_punct_context_list,
             }
             example = InputExample(i, subj, obj, ori_tokens, context, label, pair_type=pair_type, meta=meta)
             examples.append(example)
@@ -440,20 +440,20 @@ PROCESSORS = {
     "TACRED": TACREDProcessor,
     "tacrev": ReTACREDProcessor,
     "retacred": ReTACREDProcessor,
-    "few_rel": few_relProcessor,
+    # "few_rel": few_relProcessor,
     # "TREX-1p": ,
     # "TREX-2p": ,
 }
 
 
-def load_examples_from_file(dataset_name, data_dir_parent: str, set_type: str, num_examples: int = None,
+def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_examples: int = None,
                   num_train_examples: int = 0, num_dev_examples: int = 0, seed: int = 42, mode: str = None, 
                   use_marker=False, marker_name=None, marker_position=None, sample_num_per_rel=None) -> List[InputExample]:
     """Load examples for a given dataset_name.
     because of few-shot setting, num_example & num_example_per_label need to be set
     REdataset的存储方式必须和TACRED格式、文件目录、文件名一样
     """
-    nlp = StanfordCoreNLP(os.path.join(os.getcwd(), "stanford-corenlp-4.3.2"))
+    
     data_dir = os.path.join(data_dir_parent, dataset_name)
     processor = PROCESSORS[dataset_name]()
     ex_str = f"num_examples={num_examples}" if num_examples is not None \
@@ -517,7 +517,7 @@ def load_examples_from_file(dataset_name, data_dir_parent: str, set_type: str, n
         logger.info(f"Returning {len(examples)} {set_type} examples with label dist.: {list(label_distribution.items())}")
         return examples, new_tokens
     elif set_type == TRAIN_SET:
-        examples. new_tokens = processor.get_train_examples(data_dir)
+        examples, new_tokens = processor.get_train_examples(data_dir)
         if mode == "small_dataset":
             # small data 不应该shuffle，因为每次用一样的数据才能看出来model 方法 有没有work
             assert(sample_num_per_rel is not None and sample_num_per_rel > 0)

@@ -9,12 +9,12 @@ import random
 from logging import Logger
 import os
 import pickle
-from collections import defaultdict
+from collections import defaultdict, Counter
 from typing import Dict, List, Optional, Union
 
 import torch
 import numpy as np
-from sklearn.metrics import f1_score, precision_recall_fscore_support
+from sklearn.metrics import precision_recall_fscore_support
 
 from torch.nn import functional as F
 from torch.utils.data import Dataset
@@ -207,14 +207,14 @@ def save_result_for_a_experiment(content, data_dir, exprement_name, tag=None):
     data_dir = os.path.join(data_dir, exprement_name)
     if tag == "marker_tuning":
         now = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-        info_str = ""
-        for k, v in content["experiment_info"].items():
-            info_str += "_"
-            if k == "epoch_num":
-                info_str += "epoch_"
-            info_str += str(v)
+        # info_str = ""
+        # for k, v in content["experiment_info"].items():
+        #     info_str += "_"
+        #     if k == "epoch_num":
+        #         info_str += "epoch_"
+        #     info_str += str(v)
             
-        file_name = "wrong_examples_" + now + info_str + ".txt"
+        file_name = "wrong_examples_" + now + ".txt"
         wrong_examples_path = os.path.join(os.getcwd(), "wrong_samples", file_name) # hard code 
         with open(wrong_examples_path, 'a', encoding='UTF-8') as f:
             f.write(json.dumps(content['wrong_examples'], sort_keys=True, indent=4, separators=(',', ': ')))
@@ -267,17 +267,17 @@ def apply_threshold(output, threshold=0.0, ignore_negative_prediction=True):
     return output_.argmax(-1)
 
 
-def find_optimal_threshold(labels, output, granularity=1000, metric=f1_score_):
-    thresholds = np.linspace(0, 1, granularity)
-    values = []
-    for t in thresholds:
-        preds = apply_threshold(output, threshold=t)
-        values.append(metric(labels, preds))
+# def find_optimal_threshold(labels, output, granularity=1000, metric=f1_score):
+#     thresholds = np.linspace(0, 1, granularity)
+#     values = []
+#     for t in thresholds:
+#         preds = apply_threshold(output, threshold=t)
+#         values.append(metric(labels, preds))
 
-    best_metric_id = np.argmax(values)
-    best_threshold = thresholds[best_metric_id]
+#     best_metric_id = np.argmax(values)
+#     best_threshold = thresholds[best_metric_id]
 
-    return best_threshold, values[best_metric_id]
+#     return best_threshold, values[best_metric_id]
 
 def top_k_accuracy(output, labels, k=1):
     # relation为NA的example是没有被统计进去的，所有如果所有example都是NA的关系，则会报除零错l_sum = 0

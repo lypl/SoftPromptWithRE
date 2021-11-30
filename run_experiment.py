@@ -102,30 +102,23 @@ if __name__ == '__main__':
                       3）spanPrompt等，
                       * 这些改进的方法：探讨为什么一些prompt的效果更好 -> 修改prompt的方法本质是prompt初始化方式，即搜索的图（few-shot learning 综述（在paper/slide里面）的搜索的三个图：优化搜索原/起点、剪枝搜索空间、...后续看这个图）"""
                 REDataset_dir = eval(args["REdataset_dir_parent"])
-
                 
                 
                 # 使用small_data进行model方法检测,
-                train_data, train_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=200, use_marker=, marker_name=, marker_position=)
-                dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=200)
-                test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=200)
-                
-                
-                
+                train_data, train_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=100)
+                dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=100)
+                test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=100)
+                train_data = train_data[:100]
+                dev_data = dev_data[:50]
+                test_data = test_data[:30]
+                # pause()
 
-                # train_data = train_data[:100]
-                # dev_data = dev_data[:50]
-                # test_data = test_data[:30]
-                pause()
-
-                    
                 # for few-shot
                 # train_data = load_examples(args["REdataset_name"], REDataset_dir, "train", args["num_train_examples"])
                 # dev_data = load_examples(args["REdataset_name"], REDataset_dir, "dev", args["num_dev_examples"])
                 # test_data = load_examples(args["REdataset_name"], REDataset_dir, "test", args["num_test_examples"])
                 # step3: use wrapper with relations to get complete examples and get features
                 
-               
                 # REWrapper_args: NLIWrapperConfig, Wrapper_config_to_log: Dict
                 Wrapper_config_to_log, REWrapper_args = load_config_from_file(args["NLIWrapper_config_file_path"], NLIWRAPPER_CONFIG)
                 if REWrapper_args.use_marker:

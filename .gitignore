@@ -1,4 +1,5 @@
 wandb
+checkpoints
 stanford-corenlp-4.3.2
 wrong_samples
 __pycache__

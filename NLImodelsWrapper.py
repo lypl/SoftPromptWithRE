@@ -6,6 +6,7 @@ import jsonpickle
 import os
 import wandb
 import sys
+from pathlib import Path
 from collections import defaultdict
 from typing import List, Dict, Optional
 
@@ -27,7 +28,7 @@ from transformers import __version__ as transformers_version
 import logging
 
 from utils import relation, InputExample, InputFeatures, DictDataset, np_softmax, load_vocab, top_k_accuracy, get_new_token, f1_score
-from load_relation import  get_relations
+from load_relation import get_relations
 
 
 NLIWRAPPER = "sequence_classifier"
@@ -74,8 +75,7 @@ class NLIWrapperConfig(object):
 
     def __init__(self, model_type: str, model_name_or_path: str, wrapper_type: str, dataset_name: str, max_seq_length: int, max_num_relvec: int,
                  relations_data_dir: str, relations_data_name: str, use_cuda: bool = True, verbose: bool = False, prompt_type: str = None, relvec_construct_mode: str="from_manT",
-                 negative_threshold: float = 0.8, negative_idx: int = 13, max_activations = np.inf, valid_conditions=None, use_rel_embedding=False, 
-                 rel_id2embeddings_id_path: str = None, rel_embeddings_path: str = None, use_marker=False, marker_position=None, marker_name=None):
+                 negative_threshold: float = 0.8, negative_idx: int = 13, max_activations = np.inf, valid_conditions=None,  use_marker=False, marker_position=None, marker_name=None):
         """
         Create a new config.
 
@@ -121,10 +121,6 @@ class NLIWrapperConfig(object):
 
         # self.construct_NLI_labeled_data = construct_NLI_labeled_data
 
-        self.use_rel_embedding = use_rel_embedding
-        self.rel_id2embeddings_id_path = rel_id2embeddings_id_path
-        self.rel_embeddings_path = rel_embeddings_path
-
         self.use_marker = use_marker
         self.marker_position = marker_position
         self.marker_name = marker_name
@@ -156,7 +152,6 @@ class NLIRelationWrapper():
             # most_original_vocab_size = len(list(self.tokenizer.get_vocab()))
             self.tokenizer.add_tokens(marker_new_tokens)
 
-
         self.all_relations = get_relations(self.config.relations_data_dir, self.config.relations_data_name) # 含有'NA'关系
         
         # 若为从manT初始化得到template，则在model的embeding层对应初始化
@@ -166,12 +161,6 @@ class NLIRelationWrapper():
             # 得到original_vocab_size以save_optiPrompt
             self.original_vocab_size = len(list(self.tokenizer.get_vocab()))
             # 将[V1]~[V_max]加进vocab
-
-            if self.config.use_rel_embedding:
-                assert(self.config.rel_id2embeddings_id_path != None and self.config.rel_embeddings_path != None), "rel_id2embeddings_id_path or rel_embeddings_path == None"
-                self.rel_embeddings = np.load(self.config.rel_embeddings_path)
-                with open(self.config.rel_id2embeddings_id_path, 'r', encoding='utf-8') as f:
-                    self.rel_embedddings_idx = json.load(f)
 
             new_tokens = [get_new_token(i+1, self.config.max_num_relvec) for i in range(self.config.max_num_relvec)]
             self.tokenizer.add_tokens(new_tokens)
@@ -337,7 +326,7 @@ class NLIRelationWrapper():
             elif self.config.marker_name == "typed_marker_punct":
                 ctx_type = "typed_marker_punct_context_list"
             
-            examples.context = " ".join(example.meta[ctx_type]).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]")
+            example.context = " ".join(example.meta[ctx_type]).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]").replace("-LCB-", "{").replace("-RCB-", "}")
         if mode == 0:
             # 不tuning soft_template
             for template in self.template_list:
@@ -1050,8 +1039,8 @@ class NLIRelationWrapper():
     
     def marker_tuning_train(self, train_data: List[InputExample], dev_data: List[InputExample], device, learning_rate: float, 
                             warmup_proportion: float, save_model_parameter_dir: str, eval_batch_size: int, weight_decay: float,
-                            adam_epsilon, num_train_epochs: int, train_batch_size: int, check_step: int, gradient_accumulation_steps: int = 1, 
-                            max_grad_norm, topk: int = 1):
+                            adam_epsilon, num_train_epochs: int, train_batch_size: int, check_step: int,  max_grad_norm: float, 
+                            gradient_accumulation_steps: int = 1, topk: int = 1):
         # get_train_batch
         train_dataset = self._generate_dataset(train_data, mode=1)
         train_sampler = RandomSampler(train_dataset)
@@ -1078,7 +1067,7 @@ class NLIRelationWrapper():
         for epoch in train_iterator:
             self.model.train()
             self.model.zero_grad()
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             tr_loss = 0.0
             global_step = 0 
             epoch_iterator = tqdm(train_dataloader, desc="Iteration")
@@ -1094,9 +1083,9 @@ class NLIRelationWrapper():
 
                 if (step + 1) % gradient_accumulation_steps == 0:
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_grad_norm) # 梯度截断，
-                    self.optimizer.step()
-                    self.scheduler.step()
-                    self.optimizer.zero_grad() 
+                    optimizer.step()
+                    scheduler.step()
+                    optimizer.zero_grad() 
                     self.model.zero_grad() # ?optiT里的部分
                     global_step += 1
                     wandb.log({
@@ -1107,26 +1096,31 @@ class NLIRelationWrapper():
                     logger.info('Epoch=%d, iter=%d, loss=%.5f'%(epoch+1, step+1, tr_loss / global_step))
 
             # 每个epoch结束后进行evaluate
-            logger.info('End one epoch:{}, evaluating...'%(epoch+1))
+            logger.info('End one epoch: %d, evaluating...'%(epoch+1))
             micro_f1, f1_by_relation, _, _ = self.evaluate_RE(dev_data, device, eval_batch_size) # evaluate()这里直接用RE的结果来查看tuning的结果
+           
             history_mi_f1.append(micro_f1)
             history_ma_f1.append(f1_by_relation)
             if micro_f1 > mx_res:
                 wandb.run.summary["best_accuracy"] = micro_f1
                 mx_res = micro_f1
                 mx_epoch = epoch + 1
-                torch.save(model.state_dict(), os.path.join(save_model_parameter_dir, "parameter.pkl"))
+                if not os.path.exists(save_model_parameter_dir):
+                    os.makedirs(save_model_parameter_dir)
+                torch.save(self.model.state_dict(), os.path.join(save_model_parameter_dir, "parameter.pkl"))
 
                
         logger.info('Train Best micro_f1: %.2f'%(mx_res))
+        logger.info('In epoch: %.0f get Best micro_f1.'%(mx_epoch))
         
         
 
-    def evaluate_RE(eval_data: List[InputExample], device: str, per_gpu_eval_batch_size: int, topk=1):
+    def evaluate_RE(self, eval_data: List[InputExample], device: str, per_gpu_eval_batch_size: int, topk=1):
         """ 使用当前的model预测RE的结果 """
         outputs = self.eval(eval_data, device, per_gpu_eval_batch_size)
         all_topics = self.predict(outputs, topk)
-        return f1_score(all_topics, eval_data, self.relation_name_list), outputs, all_topics
+        micro_f1, f1_by_relation = f1_score(all_topics, eval_data, self.relation_name_list)
+        return micro_f1, f1_by_relation, outputs, all_topics
         
         
 
