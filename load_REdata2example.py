@@ -517,7 +517,7 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
             for example in new_examples:
                 label_list.append(example.label)
             label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
-            logger.info(f"small_data: Returning {len(new_examples)} {set_type} examples with label dist.: {list(label_distribution.items())}")
+            logger.info(f"small_data: Returning {len(new_examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
             return new_examples, new_tokens
 
         if ((num_examples is not None) and (num_examples > 0)):
@@ -529,7 +529,7 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
         for example in examples:
             label_list.append(example.label)
         label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
-        logger.info(f"Returning {len(examples)} {set_type} examples with label dist.: {list(label_distribution.items())}")
+        logger.info(f"Returning {len(examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
         return examples, new_tokens
     elif set_type == TRAIN_SET:
         examples, new_tokens = processor.get_train_examples(data_dir)
@@ -553,7 +553,7 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
             for example in new_examples:
                 label_list.append(example.label)
             label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
-            logger.info(f"small_data: Returning {len(new_examples)} {set_type} examples with label dist.: {list(label_distribution.items())}")
+            logger.info(f"small_data: Returning {len(new_examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
             return new_examples, new_tokens
 
         if ((num_examples is not None) and (num_examples > 0)):
@@ -565,7 +565,7 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
         for example in examples:
             label_list.append(example.label)
         label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
-        logger.info(f"Returning {len(examples)} {set_type} examples with label dist.: {list(label_distribution.items())}")
+        logger.info(f"Returning {len(examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
         return examples, new_tokens
 
     elif set_type == TEST_SET:
@@ -590,7 +590,7 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
             for example in new_examples:
                 label_list.append(example.label)
             label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
-            logger.info(f"small_data: Returning {len(new_examples)} {set_type} examples with label dist.: {list(label_distribution.items())}")
+            logger.info(f"small_data: Returning {len(new_examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
             return new_examples, new_tokens
 
         if ((num_examples is not None) and (num_examples > 0)):
@@ -602,7 +602,7 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
         for example in examples:
             label_list.append(example.label)
         label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
-        logger.info(f"Returning {len(examples)} {set_type} examples with label dist.: {list(label_distribution.items())}")
+        logger.info(f"Returning {len(examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
         return examples, new_tokens
     # elif set_type == FEW_SHOT_SET:
     #     all_examples = []

@@ -8,6 +8,7 @@ NER.py
 stanford-corenlp-latest.zip
 test_for_cuda.py
 tmp.json
+note.txt
 
 # Built application files
 *.apk

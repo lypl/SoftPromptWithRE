@@ -396,7 +396,6 @@ def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type
 
 
 def f1_score(res, examples, relations):
-    """ 这里还要具体查看并改改，用在结果对比的本地代码上 """
     def judge(string):
         if string in ["NA", "no_relation"]:
             return 0
