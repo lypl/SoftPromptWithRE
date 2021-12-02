@@ -11,7 +11,7 @@ import logging
 
 from numpy.core.numeric import allclose 
 
-from utils import InputExample, get_marked_sentence
+from utils import InputExample, get_marked_sentence, add_two_dim_dict, query_two_dim_dict
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.INFO)
 logger = logging.getLogger(__name__) 
 
@@ -554,7 +554,23 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
                 label_list.append(example.label)
             label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
             logger.info(f"small_data: Returning {len(new_examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
-            return new_examples, new_tokens
+            f_y = {}
+            for k in label_distribution.keys():
+                f_y[k] = float(label_distribution[k] / len(new_examples))
+
+            f_m = Counter()
+            sum_m_times = 0
+            f_num_my = dict() # 二维dict, f_my[metadata_token_id]["rel"] 注意rel此处是字符串，到wrapper里再转id，目前没有读rel2id, 且内容是频数，不是频率
+            
+            for ex in new_examples:
+                sum_m_times = sum_m_times + len(example.meta["M_example"])
+                for m in example.meta["M_example"]:
+                    f_m[m] = f_m[m] + 1
+                    label = example.label
+                    lst_val = query_two_dim_dict(f_num_my, m, label)
+                    add_two_dim_dict(f_num_my, m, label, lst_val+1)
+            
+            return new_examples, new_tokens, f_y, f_m, f_num_my, sum_m_times
 
         if ((num_examples is not None) and (num_examples > 0)):
             assert(num_examples <= len(examples)), "num_examples should <= len(all_train_examples)"
@@ -566,7 +582,23 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
             label_list.append(example.label)
         label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
         logger.info(f"Returning {len(examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
-        return examples, new_tokens
+        f_y = {}
+        for k in label_distribution.keys():
+                f_y[k] = float(label_distribution[k] / len(examples))
+
+        f_m = Counter()
+        sum_m_times = 0
+        f_my = dict() # 二维dict, f_my[metadata_token_id]["rel"] 注意rel此处是字符串，到wrapper里再转id，目前没有读rel2id
+        
+        for ex in examples:
+            sum_m_times = sum_m_times + len(example.meta["M_example"])
+            for m in example.meta["M_example"]:
+                f_m[m] = f_m[m] + 1
+                label = example.label
+                lst_val = query_two_dim_dict(f_my, m, label)
+                add_two_dim_dict(f_my, m, label, lst_val+1)
+
+        return examples, new_tokens, f_y, f_m, f_my
 
     elif set_type == TEST_SET:
         examples, new_tokens = processor.get_test_examples(data_dir)

@@ -12,6 +12,7 @@
     "use_marker": "True",
     "marker_position": "both",
     "marker_name": "entity_marker",
+    "metadata_path": "os.path.join(os.getcwd(), 'datasets', 'new')", 
     "valid_conditions": {
         "per:alternate_names": ["PERSON:PERSON", "PERSON:MISC"],
         "per:date_of_birth": ["PERSON:DATE"],

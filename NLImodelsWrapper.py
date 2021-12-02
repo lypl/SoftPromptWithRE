@@ -27,7 +27,7 @@ from transformers import __version__ as transformers_version
 
 import logging
 
-from utils import relation, InputExample, InputFeatures, DictDataset, np_softmax, load_vocab, top_k_accuracy, get_new_token, f1_score
+from utils import relation, InputExample, InputFeatures, DictDataset, np_softmax, load_vocab, top_k_accuracy, get_new_token, f1_score, query_two_dim_dict
 from load_relation import get_relations
 
 
@@ -74,8 +74,9 @@ class NLIWrapperConfig(object):
     """A configuration for a :class:`NLIModelWrapper`."""
 
     def __init__(self, model_type: str, model_name_or_path: str, wrapper_type: str, dataset_name: str, max_seq_length: int, max_num_relvec: int,
-                 relations_data_dir: str, relations_data_name: str, use_cuda: bool = True, verbose: bool = False, prompt_type: str = None, relvec_construct_mode: str="from_manT",
-                 negative_threshold: float = 0.8, negative_idx: int = 13, max_activations = np.inf, valid_conditions=None,  use_marker=False, marker_position=None, marker_name=None):
+                 relations_data_dir: str, relations_data_name: str, use_cuda: bool = True, verbose: bool = False, prompt_type: str = None, 
+                 relvec_construct_mode: str="from_manT", negative_threshold: float = 0.8, negative_idx: int = 13, max_activations = np.inf, 
+                 valid_conditions=None,  use_marker=False, marker_position=None, marker_name=None, metadata_path=None):
         """
         Create a new config.
 
@@ -124,10 +125,12 @@ class NLIWrapperConfig(object):
         self.use_marker = use_marker
         self.marker_position = marker_position
         self.marker_name = marker_name
+
+        self.metadata_path = metadata_path
         
 class NLIRelationWrapper():
     """A wrapper around a Transformer-based NLI language model."""
-    def __init__(self, config: NLIWrapperConfig, marker_new_tokens=None):
+    def __init__(self, config: NLIWrapperConfig, marker_new_tokens=None, f_y_train=None, f_m_train=None, f_my_train=None, sum_m_times=None):
         """Create a new wrapper from the given config."""
         self.config = config
         config_class = MODEL_CLASSES[self.config.model_type]['config'] # 用于获取model自身的config.json, 以得到label2id
@@ -215,21 +218,37 @@ class NLIRelationWrapper():
 
         # pause()        
 
-        # self.train_NL_data = {} # 自然语言的输入文本
-        # self.train_data_cnt = 0
-
         self.template_list = [] # all_templates
         self.relation_name_list =  [] # relation_dataset共有多少个relation(in NL==>r.label) List[realtion.label]
         self.template_mapping = defaultdict(list) # Dict[relation(str,in NL): List[template(str, in NL)]]
         self.rel2id = {}
+        self.id2rel = {}
         for r in self.all_relations:
             self.template_list.extend(r.templates)
             self.relation_name_list.append(r.label)
             self.template_mapping[r.label] = r.templates
             self.rel2id[r.label] = r.ID
+            self.id2rel[r.ID] = r.label
 
-        # print("len(relation_name_list):")
-        # print(len(self.relation_name_list))
+        if f_y_train:
+            assert(f_m_train is not None)
+            assert(f_my_train is not None)
+            assert(sum_m_times is not None)
+            assert(self.config.metadata_path is not None)
+            self.f_y = f_y_train
+            self.metadata = np.load(metadata_path) # 传path读进来，保存成.npy格式
+            self.f_m = f_m_train
+            self.f_my = f_my_train
+            self.sum_m_times = sum_m_times
+
+            self.pmi_matrix = []
+            for m in range(len(self.metadata)):
+                tmp_y = []
+                for rel_id in range(len(self.relation_name_list)):
+                    rel = self.id2rel[rel_id]
+                    tmp_y.append( float( (query_two_dim_dict(self.f_my, m, rel) / sum_m_times) / (self.f_y[rel] * self.f_m[m])) )
+                self.pmi_matrix.append(tmp_y)
+            self.pmi_matrix = np.array(self.pmi_matrix)
 
         self.tot_new_tokens = 0
 
@@ -284,7 +303,34 @@ class NLIRelationWrapper():
 
         self.idx2label = np.vectorize(idx2rel) # idx(int)下标：relation(str, in NL) 
 
+    def select_metadata_for_example(example, rel_num, pmi_matrix, f_y: Dict[int, float], n=70) -> List[int]:
+        """
+        rel_num: 关系的个数 *使用关系的id（rel2id）,self.rel2id[example.label]
+        pmi_matrix: row:M里token的下标，col：关系的id, 这里的pmi值没有计算log
+        f_y: rel（id）在训练数据里的频率
+        n: 
+        return: List[token在M里对应的下标]
+        """
+        def softmax(x: np) -> np:
+            return np.exp(x)/sum(np.exp(x))
+        def entropy(x: np):
+            new_x = log(x)
+            return -np.sum(x*new_x)
 
+        ret = [] # list[tuple:(token_idx, H_m)]
+        M_example = example.meta["M_example"] # token 在 M 中对应的下标
+        r_y = [] 
+        for m in M_example:
+            for rel in range(rel_num):
+                pmi_rel = float(pmi_matrix[m][rel] * f_y[rel])
+                r_y.append(pmi_rel)
+            r_y = np.array(r_y)
+            r_y = softmax(r_y)
+            H_m = entropy(r_y)# 对r_y里每个元素算交叉熵
+            ret.append((m, H_m))
+        sorted(ret, key=lambda x: x[1])
+        ret = ret[::-1]
+        return ret
     
     def construct_list_of_featrues_with_batched_inputids(self, batchEncoding, example: InputExample)->List[InputFeatures]:
         features = []

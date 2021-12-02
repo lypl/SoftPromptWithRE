@@ -75,10 +75,12 @@ def construct_config(config_type: str, content: Dict):
         marker_position = content["marker_position"]
         marker_name = content["marker_name"]
 
+        metadata_path = content["metadata_path"]
+
         return NLIWrapperConfig(model_type=model_type, model_name_or_path=model_name_or_path, wrapper_type=wrapper_type, dataset_name=dataset_name, max_seq_length=max_seq_length, 
                                 max_num_relvec=max_num_relvec, relations_data_dir=relations_data_dir, 
                                 relations_data_name=relations_data_name, prompt_type=prompt_type, relvec_construct_mode=relvec_construct_mode, valid_conditions=valid_conditions,
-                                use_marker=use_marker, marker_position=marker_position, marker_name=marker_name)
+                                use_marker=use_marker, marker_position=marker_position, marker_name=marker_name， metadata_path=metadata_path)
     else:
         raise ValueError(f"'config_type' must be one of {CONFIG_TYPES}, got '{config_type}' instead")
 

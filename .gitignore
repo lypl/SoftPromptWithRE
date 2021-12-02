@@ -9,6 +9,7 @@ stanford-corenlp-latest.zip
 test_for_cuda.py
 tmp.json
 note.txt
+queue_GPU.py
 
 # Built application files
 *.apk

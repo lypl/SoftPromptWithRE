@@ -446,3 +446,15 @@ def f1_score(res, examples, relations):
 
     return micro_f1, f1_by_relation
 
+def add_two_dim_dict(the_dict: Dict, key_a, key_b, val):
+    if key_a in the_dict.keys():
+        thedict[key_a].update({key_b: val})
+    else:
+        thedict.update({key_a:{key_b: val}})
+
+def query_two_dim_dict(the_dict: Dict, key_a, key_b,):
+    if key_a not in the_dict.keys():
+        return 0
+    if key_b not in the_dict[a].keys():
+        return 0
+    return the_dict[key_a][key_b]
