@@ -108,9 +108,9 @@ if __name__ == '__main__':
                 train_data, train_new_tokens, f_y_train, f_m_train, f_my_train, sum_m_times = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=100)
                 dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=100)
                 test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=100)
-                train_data = train_data[:100]
-                dev_data = dev_data[:50]
-                test_data = test_data[:30]
+                # train_data = train_data[:100]
+                # dev_data = dev_data[:50]
+                # test_data = test_data[:30]
                 # pause()
                 
                 # REWrapper_args: NLIWrapperConfig, Wrapper_config_to_log: Dict

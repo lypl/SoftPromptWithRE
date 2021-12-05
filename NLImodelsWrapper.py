@@ -341,7 +341,7 @@ class NLIRelationWrapper():
 
         self.idx2label = np.vectorize(idx2rel) # idx(int)下标：relation(str, in NL) 
 
-    def select_metadata_for_example(example, entity_type: str) -> List[int]:
+    def select_metadata_for_example(self, example, entity_type: str) -> List[int]:
         """
         rel_num: 关系的个数 *使用关系的id（rel2id）,self.rel2id[example.label]
         pmi_matrix: row:M里token的下标，col：关系的id, 这里的pmi值没有计算log
@@ -352,42 +352,55 @@ class NLIRelationWrapper():
         def softmax(x: np) -> np:
             return np.exp(x)/sum(np.exp(x))
         def entropy(x: np):
-            new_x = log(x)
+            new_x = np.log2(x)
             return -np.sum(x*new_x)
 
         M_example = [] # metadata里的下标
         if entity_type == "subj":
             for tk in example.meta["subj_fine_grained_type"]:
                 assert(tk in self.metadata2id.keys()) # utf-8 的影响，有\uxxxx的符号
-                M_example.append(self.metadata2id[tk])
+                # M_example.append(self.metadata2id[tk])
+                M_example.append(tk)
             for tk in example.meta["subj_fine_grained_relation"]:
                 assert(tk in self.metadata2id.keys())
-                M_example.append(self.metadata2id[tk])
+                # M_example.append(self.metadata2id[tk])
+                M_example.append(tk)
         elif entity_type == "obj":
             for tk in example.meta["obj_fine_grained_type"]:
                 assert(tk in self.metadata2id.keys())
-                M_example.append(self.metadata2id[tk])
+                # M_example.append(self.metadata2id[tk])
+                M_example.append(tk)
             for tk in example.meta["obj_fine_grained_relation"]:
                 assert(tk in self.metadata2id.keys())
-                M_example.append(self.metadata2id[tk])
+                # M_example.append(self.metadata2id[tk])
+                M_example.append(tk)
         else:
             raise ValueError(f"'entity_type' must be one of ['subj', 'obj']")
 
         ret = [] # list[tuple:(token_idx, H_m)]
         
-        r_y = [] 
-        for m in M_example:
+        
+        for m_name in M_example:
+            r_y = []
             for rel in range(self.n_rel):
-                pmi_rel = float(self.pmi_matrix[m][rel] * self.f_y[rel])
+                rel_name = self.id2rel[rel]
+                m = self.metadata2id[m_name]
+                pmi_rel = float(self.pmi_matrix[m, rel] * self.f_y[rel_name])
                 r_y.append(pmi_rel)
             r_y = np.array(r_y)
             r_y = softmax(r_y)
             H_m = entropy(r_y)# 对r_y里每个元素算交叉熵
-            ret.append((m, H_m))
+            ret.append((m_name, H_m))
         sorted(ret, key=lambda x: x[1])
         ret = ret[::-1]
-        cnt = min(self.metadata_num_per_entity, len(ret))
-        return ret[:cnt]
+        cnt = min(self.config.metadata_num_per_entity, len(ret))
+        fin_ret = []
+        for now in ret:
+            fin_ret.append(now[0])
+            if len(fin_ret) >= cnt:
+                break
+        # print(ret[:cnt])
+        return fin_ret
     
     def construct_list_of_featrues_with_batched_inputids(self, batchEncoding, example: InputExample)->List[InputFeatures]:
         features = []

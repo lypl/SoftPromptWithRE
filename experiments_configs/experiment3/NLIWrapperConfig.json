@@ -3,7 +3,7 @@
     "model_name_or_path": "roberta-large-mnli", 
     "wrapper_type": "sequence_classifier", 
     "dataset_name": "TACRED", 
-    "max_seq_length": 150, 
+    "max_seq_length": 256, 
     "relvec_construct_mode": "from_manT",
     "prompt_type": "relvec",
     "max_num_relvec": 500,
