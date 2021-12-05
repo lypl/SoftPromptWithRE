@@ -75,12 +75,20 @@ def construct_config(config_type: str, content: Dict):
         marker_position = content["marker_position"]
         marker_name = content["marker_name"]
 
-        metadata_path = content["metadata_path"]
+        use_metadata = eval(content["use_metadata"])
+        use_metadata_description = eval(content["use_metadata_description"])
+        tot_metadata_path = eval(content["tot_metadata_path"])
+        metadata_description_pos = content["metadata_description_pos"]
+        metadata_insert_position = content["metadata_insert_position"]
+        metadata_num_per_entity = content["metadata_num_per_entity"]
+        metadata2id_path = eval(content["metadata2id_path"])
 
         return NLIWrapperConfig(model_type=model_type, model_name_or_path=model_name_or_path, wrapper_type=wrapper_type, dataset_name=dataset_name, max_seq_length=max_seq_length, 
                                 max_num_relvec=max_num_relvec, relations_data_dir=relations_data_dir, 
                                 relations_data_name=relations_data_name, prompt_type=prompt_type, relvec_construct_mode=relvec_construct_mode, valid_conditions=valid_conditions,
-                                use_marker=use_marker, marker_position=marker_position, marker_name=marker_name， metadata_path=metadata_path)
+                                use_marker=use_marker, marker_position=marker_position, marker_name=marker_name, use_metadata=use_metadata,
+                                use_metadata_description=use_metadata_description, tot_metadata_path=tot_metadata_path, metadata_description_pos=metadata_description_pos,
+                                metadata_insert_position=metadata_insert_position, metadata_num_per_entity=metadata_num_per_entity, metadata2id_path=metadata2id_path)
     else:
         raise ValueError(f"'config_type' must be one of {CONFIG_TYPES}, got '{config_type}' instead")
 

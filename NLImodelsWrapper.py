@@ -76,7 +76,9 @@ class NLIWrapperConfig(object):
     def __init__(self, model_type: str, model_name_or_path: str, wrapper_type: str, dataset_name: str, max_seq_length: int, max_num_relvec: int,
                  relations_data_dir: str, relations_data_name: str, use_cuda: bool = True, verbose: bool = False, prompt_type: str = None, 
                  relvec_construct_mode: str="from_manT", negative_threshold: float = 0.8, negative_idx: int = 13, max_activations = np.inf, 
-                 valid_conditions=None,  use_marker=False, marker_position=None, marker_name=None, metadata_path=None):
+                 valid_conditions=None,  use_marker=False, marker_position=None, marker_name=None, use_metadata=False, tot_metadata_path=None,
+                 use_metadata_description=False, metadata_description_pos= None, metadata_num_per_entity=25, metadata_insert_position=None,
+                 metadata2id_path=None):
         """
         Create a new config.
 
@@ -126,7 +128,14 @@ class NLIWrapperConfig(object):
         self.marker_position = marker_position
         self.marker_name = marker_name
 
-        self.metadata_path = metadata_path
+        self.use_metadata = use_metadata
+        self.use_metadata_description = use_metadata_description
+        self.metadata_description_pos = metadata_description_pos
+        self.tot_metadata_path = tot_metadata_path
+        self.metadata_num_per_entity = metadata_num_per_entity
+        self.metadata_insert_position = metadata_insert_position # ['arrond_entity', 'ctx_end'] 
+        self.metadata2id_path = metadata2id_path
+
         
 class NLIRelationWrapper():
     """A wrapper around a Transformer-based NLI language model."""
@@ -230,25 +239,54 @@ class NLIRelationWrapper():
             self.rel2id[r.label] = r.ID
             self.id2rel[r.ID] = r.label
 
-        if f_y_train:
+        if self.config.use_metadata:
+            assert(self.config.use_metadata_description is not None) 
+            assert(self.config.metadata2id_path is not None) 
+            assert(self.config.tot_metadata_path is not None)
+            assert(self.config.metadata_num_per_entity is not None)
+            assert(self.config.metadata_insert_position is not None and self.config.metadata_insert_position in ['arrond_entity', 'ctx_end'])
+            assert(self.config.metadata_description_pos is not None)
+
+            assert(f_y_train is not None)
             assert(f_m_train is not None)
             assert(f_my_train is not None)
             assert(sum_m_times is not None)
-            assert(self.config.metadata_path is not None)
-            self.f_y = f_y_train
-            self.metadata = np.load(metadata_path) # 传path读进来，保存成.npy格式
-            self.f_m = f_m_train
-            self.f_my = f_my_train
+            
+            self.metadata2id = None
+            with open(self.config.metadata2id_path, 'r', encoding='utf-8') as f:
+                self.metadata2id = json.load(f)
+
+            self.f_y = f_y_train # {"rel: str": float频率}
+            self.metadata = []
+            with open(self.config.tot_metadata_path, 'r', encoding='UTF-8') as f:
+                for line in f.readlines():
+                    line = line.strip('\n')
+                    self.metadata.append(line)
+         
+            self.f_m = f_m_train # {"fine_grained_types+KGrelations: str": float频率}
+            self.f_my = f_my_train # f_my[m][y]: int(次数)
             self.sum_m_times = sum_m_times
 
-            self.pmi_matrix = []
-            for m in range(len(self.metadata)):
+            self.pmi_matrix = None
+            for m in self.metadata:
                 tmp_y = []
                 for rel_id in range(len(self.relation_name_list)):
                     rel = self.id2rel[rel_id]
-                    tmp_y.append( float( (query_two_dim_dict(self.f_my, m, rel) / sum_m_times) / (self.f_y[rel] * self.f_m[m])) )
-                self.pmi_matrix.append(tmp_y)
-            self.pmi_matrix = np.array(self.pmi_matrix)
+                    if sum_m_times > 0 and self.f_m[m] > 0 and self.f_y[rel] > 0:
+                        # print(f"{m}, {rel} has cnt: {query_two_dim_dict(self.f_my, m, rel)}")
+                        tmp_y.append( float( (query_two_dim_dict(self.f_my, m, rel) / sum_m_times) / (self.f_y[rel] * self.f_m[m])) )
+                    else:
+                        tmp_y.append(0.0)
+                if self.pmi_matrix is None:
+                    self.pmi_matrix = np.array(tmp_y)
+                else:
+                    self.pmi_matrix = np.vstack((self.pmi_matrix, np.array(tmp_y)))
+                # self.pmi_matrix.append(tmp_y)
+            # self.pmi_matrix = np.array(self.pmi_matrix) 
+            print(self.pmi_matrix.shape)
+            # pause()
+
+
 
         self.tot_new_tokens = 0
 
@@ -303,7 +341,7 @@ class NLIRelationWrapper():
 
         self.idx2label = np.vectorize(idx2rel) # idx(int)下标：relation(str, in NL) 
 
-    def select_metadata_for_example(example, rel_num, pmi_matrix, f_y: Dict[int, float], n=70) -> List[int]:
+    def select_metadata_for_example(example, entity_type: str) -> List[int]:
         """
         rel_num: 关系的个数 *使用关系的id（rel2id）,self.rel2id[example.label]
         pmi_matrix: row:M里token的下标，col：关系的id, 这里的pmi值没有计算log
@@ -317,12 +355,30 @@ class NLIRelationWrapper():
             new_x = log(x)
             return -np.sum(x*new_x)
 
+        M_example = [] # metadata里的下标
+        if entity_type == "subj":
+            for tk in example.meta["subj_fine_grained_type"]:
+                assert(tk in self.metadata2id.keys()) # utf-8 的影响，有\uxxxx的符号
+                M_example.append(self.metadata2id[tk])
+            for tk in example.meta["subj_fine_grained_relation"]:
+                assert(tk in self.metadata2id.keys())
+                M_example.append(self.metadata2id[tk])
+        elif entity_type == "obj":
+            for tk in example.meta["obj_fine_grained_type"]:
+                assert(tk in self.metadata2id.keys())
+                M_example.append(self.metadata2id[tk])
+            for tk in example.meta["obj_fine_grained_relation"]:
+                assert(tk in self.metadata2id.keys())
+                M_example.append(self.metadata2id[tk])
+        else:
+            raise ValueError(f"'entity_type' must be one of ['subj', 'obj']")
+
         ret = [] # list[tuple:(token_idx, H_m)]
-        M_example = example.meta["M_example"] # token 在 M 中对应的下标
+        
         r_y = [] 
         for m in M_example:
-            for rel in range(rel_num):
-                pmi_rel = float(pmi_matrix[m][rel] * f_y[rel])
+            for rel in range(self.n_rel):
+                pmi_rel = float(self.pmi_matrix[m][rel] * self.f_y[rel])
                 r_y.append(pmi_rel)
             r_y = np.array(r_y)
             r_y = softmax(r_y)
@@ -330,7 +386,8 @@ class NLIRelationWrapper():
             ret.append((m, H_m))
         sorted(ret, key=lambda x: x[1])
         ret = ret[::-1]
-        return ret
+        cnt = min(self.metadata_num_per_entity, len(ret))
+        return ret[:cnt]
     
     def construct_list_of_featrues_with_batched_inputids(self, batchEncoding, example: InputExample)->List[InputFeatures]:
         features = []
@@ -351,7 +408,19 @@ class NLIRelationWrapper():
             features.append(InputFeatures(corresponce_to_InputExample_idx=example.idx, input_ids=i, token_type_ids=t, attention_mask=a, label=label, logits=logits, train_label=train_label))
         return features
 
-    
+    def add_fine_grained_type_arround_entity_to_ctx(example, ctx_type, entity_span_type, subj_fine_grained_types: List, obj_fine_grained_types: List):
+        ctx_list = example.meta[ctx_type] # self.marker_name对应的ctx_list
+        entity_span = example.meta[entity_span_type]
+        subj_ed = entity_span["new_subj_ed"]
+        obj_ed = entity_span["new_obj_ed"]
+        ret = []
+        for i, token in enumerate(ctx_list):
+            if i == subj_ed:
+                ret.extend(subj_fine_grained_types)
+            if i == obj_ed:
+                ret.extend(obj_fine_grained_types)
+            ret.append(token)
+        return ret
     
     def example_processor(self, example: InputExample, mode: int) -> List[InputFeatures]:
         """ complete examples (get all raw_texts_to_tokenizer) and get List[InputFeatures]"""
@@ -363,16 +432,32 @@ class NLIRelationWrapper():
             assert(self.config.marker_name in self.marker_types and self.config.marker_position in ["context", "both"])
             
             ctx_type = None
+            entity_span_type = None
             if self.config.marker_name == "entity_marker":
                 ctx_type = "entity_marker_context_list"
+                entity_span_type = "entity_marker_new_entity_span"
             elif self.config.marker_name == "entity_marker_punct":
                 ctx_type = "entity_marker_punct_context_list"
+                entity_span_type = "entity_marker_punct_new_entity_span"
             elif self.config.marker_name == "typed_marker":
                 ctx_type = "typed_marker_context_list"
+                entity_span_type = "typed_marker_new_entity_span"
             elif self.config.marker_name == "typed_marker_punct":
                 ctx_type = "typed_marker_punct_context_list"
+                entity_span_type = "typed_marker_punct_new_entity_span"
+            ctx = example.meta[ctx_type]
+            if self.config.use_metadata:
+                subj_fine_grained_types = self.select_metadata_for_example(example, "subj")
+                obj_fine_grained_types = self.select_metadata_for_example(example, "obj")
+                if self.config.metadata_insert_position == "ctx_end":
+                    ctx.extend(subj_fine_grained_types)
+                    ctx.extend(obj_fine_grained_types)
+                else:
+                    ctx = self.add_fine_grained_type_arround_entity_to_ctx(example, ctx_type, subj_fine_grained_types, obj_fine_grained_types)
+                # use description:how? how many token to use? where to insert?
+                    
             
-            example.context = " ".join(example.meta[ctx_type]).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]").replace("-LCB-", "{").replace("-RCB-", "}")
+            example.context = " ".join(ctx).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]").replace("-LCB-", "{").replace("-RCB-", "}")
         if mode == 0:
             # 不tuning soft_template
             for template in self.template_list:

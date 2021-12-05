@@ -108,14 +108,14 @@ if __name__ == '__main__':
                 train_data, train_new_tokens, f_y_train, f_m_train, f_my_train, sum_m_times = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=100)
                 dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=100)
                 test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=100)
-                # train_data = train_data[:100]
-                # dev_data = dev_data[:50]
-                # test_data = test_data[:30]
+                train_data = train_data[:100]
+                dev_data = dev_data[:50]
+                test_data = test_data[:30]
                 # pause()
                 
                 # REWrapper_args: NLIWrapperConfig, Wrapper_config_to_log: Dict
                 Wrapper_config_to_log, REWrapper_args = load_config_from_file(args["NLIWrapper_config_file_path"], NLIWRAPPER_CONFIG)
-                REWrapper_args.metadata_path = os.path.join(REWrapper_args.metadata_path, args["dataset_name"], 'metadata.npy')
+            
                 if REWrapper_args.use_marker:
                     tr_new_tokens = None
                     dv_new_tokens = None
@@ -143,6 +143,7 @@ if __name__ == '__main__':
                     for token in te_new_tokens:
                         if token not in new_tokens:
                             new_tokens.append(token)
+                
                 REWrapper: NLIRelationWrapper = NLIRelationWrapper(REWrapper_args, marker_new_tokens=new_tokens, f_y_train=f_y_train, 
                                                                    f_m_train=f_m_train, f_my_train=f_my_train, sum_m_times=sum_m_times)
                 # NLITrainConfig_args:NLITrainConfig
@@ -186,7 +187,7 @@ if __name__ == '__main__':
                     project="Verbalize_RE",
                     config=wdb_config,
                     notes="marker_tuning",
-                    name=REWrapper_args.marker_name
+                    name=REWrapper_args.marker_name+"metadata"
                 )
                 # init_exp_info = {
                 #     "dataset_name": args["REdataset_name"],

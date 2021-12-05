@@ -203,35 +203,40 @@ class TACREDProcessor(DataProcessor):
             subj_coarse_grained_type = line["subj_coarse_grain_type"].lower()
             obj_coarse_grained_type = line["obj_coarse_grain_type"].lower()
 
-            subj_fine_grained_res = line["subj_fine_res"]
+            subj_fine_grained_res = line["subj_fine_res"] # ["title", [types], "description", [relations]]
             obj_fine_grained_res = line["obj_fine_res"]
 
-            # 若存在description: 使用标注出的第一个description
-            subj_description: str = ""
-            if len(subj_fine_grained_res) > 0:
-                subj_description = subj_fine_grained_res[0][2]
-            obj_description: str = ""
-            if len(obj_fine_grained_res) > 0:
-                obj_description = obj_fine_grained_res[0][2]
+            
 
-            # 若存在fine-grained_type: 全都要 会引入noise?
+            # 若存在fine-grained_type
             subj_fine_grained_type = []
-            for it in subj_fine_grained_res:
-                for ty in it:
-                    subj_fine_grained_type.append(ty)
+            subj_description: str = ""
+            subj_fine_grained_relation = []
+            if len(subj_fine_grained_res) > 0:
+                tmp_res = subj_fine_grained_res[0]
+                subj_fine_grained_type = tmp_res[1]
+                subj_description = tmp_res[2]
+                subj_fine_grained_relation = tmp_res[3]
+
             obj_fine_grained_type = []
-            for it in obj_fine_grained_res:
-                for ty in it:
-                    obj_fine_grained_type.append(ty)
+            obj_description: str = ""
+            obj_fine_grained_relation = []
+            if len(obj_fine_grained_res) > 0:
+                tmp_res = obj_fine_grained_res[0]
+                obj_fine_grained_type = tmp_res[1]
+                obj_description = tmp_res[2]
+                obj_fine_grained_relation = tmp_res[3]
+
+            
             
             # 这里只使用粗粒度的类别
-            entity_marker_context_list, entity_marker_new_tokens = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker")
+            entity_marker_context_list, entity_marker_new_tokens, entity_marker_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker")
            
-            entity_marker_punct_context_list, entity_marker_punct_new_tokens = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker_punct")
+            entity_marker_punct_context_list, entity_marker_punct_new_tokens, entity_marker_punct_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker_punct")
             
-            typed_marker_context_list, typed_marker_new_tokens = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker")
+            typed_marker_context_list, typed_marker_new_tokens, typed_marker_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker")
             
-            typed_marker_punct_context_list, typed_marker_punct_new_tokens = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker_punct")
+            typed_marker_punct_context_list, typed_marker_punct_new_tokens, typed_marker_punct_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker_punct")
             
             # 后续list换成str的时候需要使用这样的replace函数
             # print(" ".join(entity_marker_context).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]"))
@@ -249,12 +254,20 @@ class TACREDProcessor(DataProcessor):
                 "obj_pos": line["t"]["pos"],
                 "subj_description": subj_description,
                 "obj_description": obj_description,
+                "subj_fine_grained_relation": subj_fine_grained_relation,
+                "obj_fine_grained_relation": obj_fine_grained_relation,
                 "subj_coarse_grained_type": subj_coarse_grained_type,
                 "obj_coarse_grained_type": obj_coarse_grained_type,
+                "subj_fine_grained_type": subj_fine_grained_type,
+                "obj_fine_grained_type": obj_fine_grained_type,
                 "entity_marker_context_list": entity_marker_context_list,
+                "entity_marker_new_entity_span": entity_marker_new_entity_span, # 
                 "entity_marker_punct_context_list": entity_marker_punct_context_list,
+                "entity_marker_punct_new_entity_span": entity_marker_punct_new_entity_span,#
                 "typed_marker_context_list": typed_marker_context_list,
+                "typed_marker_new_entity_span": typed_marker_new_entity_span,#
                 "typed_marker_punct_context_list": typed_marker_punct_context_list,
+                "typed_marker_punct_new_entity_span": typed_marker_punct_new_entity_span,#
             }
             example = InputExample(i, subj, obj, ori_tokens, context, label, pair_type=pair_type, meta=meta)
             examples.append(example)
@@ -352,35 +365,40 @@ class ReTACREDProcessor(DataProcessor):
             subj_coarse_grained_type = line["subj_coarse_grain_type"].lower()
             obj_coarse_grained_type = line["obj_coarse_grain_type"].lower()
 
-            subj_fine_grained_res = line["subj_fine_res"]
+            subj_fine_grained_res = line["subj_fine_res"] # ["title", [types], "description", [relations]]
             obj_fine_grained_res = line["obj_fine_res"]
 
-            # 若存在description: 使用标注出的第一个description
-            subj_description: str = ""
-            if len(subj_fine_grained_res) > 0:
-                subj_description = subj_fine_grained_res[0][2]
-            obj_description: str = ""
-            if len(obj_fine_grained_res) > 0:
-                obj_description = obj_fine_grained_res[0][2]
+            
 
-            # 若存在fine-grained_type: 全都要 会引入noise?
+            # 若存在fine-grained_type
             subj_fine_grained_type = []
-            for it in subj_fine_grained_res:
-                for ty in it:
-                    subj_fine_grained_type.append(ty)
+            subj_description: str = ""
+            subj_fine_grained_relation = []
+            if len(subj_fine_grained_res) > 0:
+                tmp_res = subj_fine_grained_res[0]
+                subj_fine_grained_type = tmp_res[1]
+                subj_description = tmp_res[2]
+                subj_fine_grained_relation = tmp_res[3]
+
             obj_fine_grained_type = []
-            for it in obj_fine_grained_res:
-                for ty in it:
-                    obj_fine_grained_type.append(ty)
+            obj_description: str = ""
+            obj_fine_grained_relation = []
+            if len(obj_fine_grained_res) > 0:
+                tmp_res = obj_fine_grained_res[0]
+                obj_fine_grained_type = tmp_res[1]
+                obj_description = tmp_res[2]
+                obj_fine_grained_relation = tmp_res[3]
+
+            
             
             # 这里只使用粗粒度的类别
-            entity_marker_context_list, entity_marker_new_tokens = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker")
+            entity_marker_context_list, entity_marker_new_tokens, entity_marker_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker")
            
-            entity_marker_punct_context_list, entity_marker_punct_new_tokens = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker_punct")
+            entity_marker_punct_context_list, entity_marker_punct_new_tokens, entity_marker_punct_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "entity_marker_punct")
             
-            typed_marker_context_list, typed_marker_new_tokens = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker")
+            typed_marker_context_list, typed_marker_new_tokens, typed_marker_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker")
             
-            typed_marker_punct_context_list, typed_marker_punct_new_tokens = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker_punct")
+            typed_marker_punct_context_list, typed_marker_punct_new_tokens, typed_marker_punct_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker_punct")
             
             # 后续list换成str的时候需要使用这样的replace函数
             # print(" ".join(entity_marker_context).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]"))
@@ -398,12 +416,20 @@ class ReTACREDProcessor(DataProcessor):
                 "obj_pos": line["t"]["pos"],
                 "subj_description": subj_description,
                 "obj_description": obj_description,
+                "subj_fine_grained_relation": subj_fine_grained_relation,
+                "obj_fine_grained_relation": obj_fine_grained_relation,
                 "subj_coarse_grained_type": subj_coarse_grained_type,
                 "obj_coarse_grained_type": obj_coarse_grained_type,
+                "subj_fine_grained_type": subj_fine_grained_type,
+                "obj_fine_grained_type": obj_fine_grained_type,
                 "entity_marker_context_list": entity_marker_context_list,
+                "entity_marker_new_entity_span": entity_marker_new_entity_span, # 
                 "entity_marker_punct_context_list": entity_marker_punct_context_list,
+                "entity_marker_punct_new_entity_span": entity_marker_punct_new_entity_span,#
                 "typed_marker_context_list": typed_marker_context_list,
+                "typed_marker_new_entity_span": typed_marker_new_entity_span,#
                 "typed_marker_punct_context_list": typed_marker_punct_context_list,
+                "typed_marker_punct_new_entity_span": typed_marker_punct_new_entity_span,#
             }
             example = InputExample(i, subj, obj, ori_tokens, context, label, pair_type=pair_type, meta=meta)
             examples.append(example)
@@ -439,7 +465,6 @@ class ReTACREDProcessor(DataProcessor):
                 d = json.loads(i) # .txt文件里最后一行后面不能有别的空行，否则json.loads无法处理空行
                 lines.append(d)
             return lines
-
 
 
 TRAIN_SET = "train"
@@ -562,9 +587,15 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
             sum_m_times = 0
             f_num_my = dict() # 二维dict, f_my[metadata_token_id]["rel"] 注意rel此处是字符串，到wrapper里再转id，目前没有读rel2id, 且内容是频数，不是频率
             
+            
             for ex in new_examples:
-                sum_m_times = sum_m_times + len(example.meta["M_example"])
-                for m in example.meta["M_example"]:
+                M_example = []
+                for lst in [ex.meta["subj_fine_grained_relation"], ex.meta["obj_fine_grained_relation"], ex.meta["subj_fine_grained_type"], ex.meta["obj_fine_grained_type"]]:
+                    for token in lst:
+                        if token not in M_example:
+                            M_example.append(token)
+                sum_m_times = sum_m_times + len(M_example)
+                for m in M_example:
                     f_m[m] = f_m[m] + 1
                     label = example.label
                     lst_val = query_two_dim_dict(f_num_my, m, label)
@@ -591,12 +622,17 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
         f_my = dict() # 二维dict, f_my[metadata_token_id]["rel"] 注意rel此处是字符串，到wrapper里再转id，目前没有读rel2id
         
         for ex in examples:
-            sum_m_times = sum_m_times + len(example.meta["M_example"])
-            for m in example.meta["M_example"]:
+            M_example = []
+            for lst in [ex.meta["subj_fine_grained_relation"], ex.meta["obj_fine_grained_relation"], ex.meta["subj_fine_grained_type"], ex.meta["obj_fine_grained_type"]]:
+                for token in lst:
+                    if token not in M_example:
+                        M_example.append(token)
+            sum_m_times = sum_m_times + len(M_example)
+            for m in M_example:
                 f_m[m] = f_m[m] + 1
                 label = example.label
-                lst_val = query_two_dim_dict(f_my, m, label)
-                add_two_dim_dict(f_my, m, label, lst_val+1)
+                lst_val = query_two_dim_dict(f_num_my, m, label)
+                add_two_dim_dict(f_num_my, m, label, lst_val+1)
 
         return examples, new_tokens, f_y, f_m, f_my
 

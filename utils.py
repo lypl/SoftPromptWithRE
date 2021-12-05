@@ -322,18 +322,26 @@ def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type
         marker_types = ["entity_marker", "entity_marker_punct", "typed_marker", "typed_marker_punct"]
         ctx = []
         new_tokens = []
+        new_subj_st = -1
+        new_subj_ed = -1
+        new_obj_st = -1
+        new_obj_ed = -1
         if marker_name == marker_types[0]:
             for i, token in enumerate(ori_context):
                 if i == subj_st:
                     ctx.append("[E1]")
                     new_tokens.append("[E1]")
+                    new_subj_st = len(ctx)
                 if i == subj_ed:
+                    new_subj_ed = len(ctx)
                     ctx.append("[/E1]")
                     new_tokens.append("[/E1]")
                 if i == obj_st:
                     ctx.append("[E2]")
                     new_tokens.append("[E2]")
+                    new_obj_st = len(ctx)
                 if i == obj_ed:
+                    new_obj_ed = len(ctx)
                     ctx.append("[/E2]")
                     new_tokens.append("[/E2]")
                 ctx.append(token)
@@ -341,11 +349,15 @@ def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type
             for i, token in enumerate(ori_context):
                 if i == subj_st:
                     ctx.append("@")
+                    new_subj_st = len(ctx)
                 if i == subj_ed:
+                    new_subj_ed = len(ctx)
                     ctx.append("@")
                 if i == obj_st:
                     ctx.append("#")
+                    new_obj_st = len(ctx)
                 if i == obj_ed:
+                    new_obj_ed = len(ctx)
                     ctx.append("#")
                 ctx.append(token)
         elif marker_name == marker_types[2]:
@@ -353,20 +365,24 @@ def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type
                 if i == subj_st:
                     res = "[E1:{}]".format(subj_type)
                     ctx.append(res)
+                    new_subj_st = len(ctx)
                     if res not in new_tokens:
                         new_tokens.append(res)
                 if i == subj_ed:
                     res = "[/E1:{}]".format(subj_type)
+                    new_subj_ed = len(ctx)
                     ctx.append(res)
                     if res not in new_tokens:
                         new_tokens.append(res)
                 if i == obj_st:
                     res = "[E2:{}]".format(obj_type)
                     ctx.append(res)
+                    new_obj_st = len(ctx)
                     if res not in new_tokens:
                         new_tokens.append(res)
                 if i == obj_ed:
                     res = "[/E2:{}]".format(obj_type)
+                    new_obj_ed = len(ctx)
                     ctx.append(res)
                     if res not in new_tokens:
                         new_tokens.append(res)
@@ -377,21 +393,31 @@ def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type
                 if i == subj_st:
                     res = "@ * {}".format(subj_type)
                     ctx.append(res)
+                    new_subj_st = len(ctx)
                     if res not in new_tokens:
                         new_tokens.append(res)
                 if i == subj_ed:
                     res = "* @"
+                    new_subj_ed = len(ctx)
                     ctx.append(res)
                 if i == obj_st:
                     res = "# ^ {}".format(obj_type)
                     ctx.append(res)
+                    new_obj_st = len(ctx)
                     if res not in new_tokens:
                         new_tokens.append(res)
                 if i == obj_ed:
                     res = "^ #"
+                    new_obj_ed = len(ctx)
                     ctx.append(res)
                 ctx.append(token)
-        return ctx, new_tokens
+        new_entity_span = {
+            "new_subj_st": new_subj_st,
+            "new_subj_ed": new_subj_ed,
+            "new_obj_st": new_obj_st,
+            "new_obj_st": new_obj_ed,
+        }
+        return ctx, new_tokens, new_entity_span
         
 
 
@@ -448,13 +474,13 @@ def f1_score(res, examples, relations):
 
 def add_two_dim_dict(the_dict: Dict, key_a, key_b, val):
     if key_a in the_dict.keys():
-        thedict[key_a].update({key_b: val})
+        the_dict[key_a].update({key_b: val})
     else:
-        thedict.update({key_a:{key_b: val}})
+        the_dict.update({key_a:{key_b: val}})
 
 def query_two_dim_dict(the_dict: Dict, key_a, key_b,):
     if key_a not in the_dict.keys():
         return 0
-    if key_b not in the_dict[a].keys():
+    if key_b not in the_dict[key_a].keys():
         return 0
     return the_dict[key_a][key_b]
