@@ -10,7 +10,7 @@
     "check_step": 1000, 
     "gradient_accumulation": 8,
     "seed": 6, 
-    "device": "cuda:0",
+    "device": "cuda:1",
     "prompt_type": "relvec",
     "marker_learning_rate": 3e-5,
     "marker_warmup_proportion": 0.1,

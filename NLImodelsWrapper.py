@@ -78,7 +78,7 @@ class NLIWrapperConfig(object):
                  relvec_construct_mode: str="from_manT", negative_threshold: float = 0.8, negative_idx: int = 13, max_activations = np.inf, 
                  valid_conditions=None,  use_marker=False, marker_position=None, marker_name=None, use_metadata=False, tot_metadata_path=None,
                  use_metadata_description=False, metadata_description_pos= None, metadata_num_per_entity=25, metadata_insert_position=None,
-                 metadata2id_path=None):
+                 metadata2id_path=None, check_filter_metadata_dir=None):
         """
         Create a new config.
 
@@ -135,6 +135,8 @@ class NLIWrapperConfig(object):
         self.metadata_num_per_entity = metadata_num_per_entity
         self.metadata_insert_position = metadata_insert_position # ['arrond_entity', 'ctx_end'] 
         self.metadata2id_path = metadata2id_path
+
+        self.check_filter_metadata_dir = check_filter_metadata_dir
 
         
 class NLIRelationWrapper():
@@ -240,6 +242,9 @@ class NLIRelationWrapper():
             self.id2rel[r.ID] = r.label
 
         if self.config.use_metadata:
+            assert(self.config.check_filter_metadata_dir is not None) 
+            if not os.path.exists(self.config.check_filter_metadata_dir):
+                os.makedirs(self.config.check_filter_metadata_dir)
             assert(self.config.use_metadata_description is not None) 
             assert(self.config.metadata2id_path is not None) 
             assert(self.config.tot_metadata_path is not None)
@@ -361,19 +366,19 @@ class NLIRelationWrapper():
                 assert(tk in self.metadata2id.keys()) # utf-8 的影响，有\uxxxx的符号
                 # M_example.append(self.metadata2id[tk])
                 M_example.append(tk)
-            for tk in example.meta["subj_fine_grained_relation"]:
-                assert(tk in self.metadata2id.keys())
-                # M_example.append(self.metadata2id[tk])
-                M_example.append(tk)
+            # for tk in example.meta["subj_fine_grained_relation"]:
+            #     assert(tk in self.metadata2id.keys())
+            #     # M_example.append(self.metadata2id[tk])
+            #     M_example.append(tk)
         elif entity_type == "obj":
             for tk in example.meta["obj_fine_grained_type"]:
                 assert(tk in self.metadata2id.keys())
                 # M_example.append(self.metadata2id[tk])
                 M_example.append(tk)
-            for tk in example.meta["obj_fine_grained_relation"]:
-                assert(tk in self.metadata2id.keys())
-                # M_example.append(self.metadata2id[tk])
-                M_example.append(tk)
+            # for tk in example.meta["obj_fine_grained_relation"]:
+            #     assert(tk in self.metadata2id.keys())
+            #     # M_example.append(self.metadata2id[tk])
+            #     M_example.append(tk)
         else:
             raise ValueError(f"'entity_type' must be one of ['subj', 'obj']")
 
@@ -400,7 +405,7 @@ class NLIRelationWrapper():
             if len(fin_ret) >= cnt:
                 break
         # print(ret[:cnt])
-        return fin_ret
+        return fin_ret, ret
     
     def construct_list_of_featrues_with_batched_inputids(self, batchEncoding, example: InputExample)->List[InputFeatures]:
         features = []
@@ -460,8 +465,21 @@ class NLIRelationWrapper():
                 entity_span_type = "typed_marker_punct_new_entity_span"
             ctx = example.meta[ctx_type]
             if self.config.use_metadata:
-                subj_fine_grained_types = self.select_metadata_for_example(example, "subj")
-                obj_fine_grained_types = self.select_metadata_for_example(example, "obj")
+                subj_fine_grained_types, ori_sub_res = self.select_metadata_for_example(example, "subj")
+                obj_fine_grained_types, ori_obj_res = self.select_metadata_for_example(example, "obj")
+                # for debug
+                # check_path = os.path.join(self.config.check_filter_metadata_dir, example.label.replace("/", "_")+".txt")
+                # with open(check_path, 'a', encoding='UTF-8') as f:
+                #     to_write = {
+                #         "subj": example.subj,
+                #         "subj_ori_res": ori_sub_res,
+                #         # "subj_res": subj_fine_grained_types,
+                #         "obj": example.obj,
+                #         "obj_ori_res": ori_obj_res,
+                #         # "obj_res": obj_fine_grained_types,
+                #     }
+                #     f.write(json.dumps(to_write))
+                #     f.write("\n")
                 if self.config.metadata_insert_position == "ctx_end":
                     ctx.extend(subj_fine_grained_types)
                     ctx.extend(obj_fine_grained_types)
@@ -1187,6 +1205,7 @@ class NLIRelationWrapper():
                             gradient_accumulation_steps: int = 1, topk: int = 1):
         # get_train_batch
         train_dataset = self._generate_dataset(train_data, mode=1)
+        # pause() # for debug
         train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=train_batch_size, num_workers=8, pin_memory=True)
         

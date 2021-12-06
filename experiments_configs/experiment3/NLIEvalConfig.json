@@ -1,5 +1,5 @@
 {
-    "device": "cuda:0",
+    "device": "cuda:1",
     "per_gpu_eval_batch_size": 64,
     "metrics":"['precision', 'recall', 'f1-score', 'top-1']",
     "multiclass": "True",
