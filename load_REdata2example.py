@@ -579,29 +579,17 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
                 label_list.append(example.label)
             label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
             logger.info(f"small_data: Returning {len(new_examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
-            f_y = {}
-            for k in label_distribution.keys():
-                f_y[k] = float(label_distribution[k] / len(new_examples))
-
-            f_m = Counter()
-            sum_m_times = 0
+            
             f_num_my = dict() # 二维dict, f_my[metadata_token_id]["rel"] 注意rel此处是字符串，到wrapper里再转id，目前没有读rel2id, 且内容是频数，不是频率
             
-            
             for ex in new_examples:
-                M_example = []
-                for lst in [ex.meta["subj_fine_grained_relation"], ex.meta["obj_fine_grained_relation"], ex.meta["subj_fine_grained_type"], ex.meta["obj_fine_grained_type"]]:
-                    for token in lst:
-                        if token not in M_example:
-                            M_example.append(token)
-                sum_m_times = sum_m_times + len(M_example)
-                for m in M_example:
-                    f_m[m] = f_m[m] + 1
-                    label = example.label
-                    lst_val = query_two_dim_dict(f_num_my, m, label)
-                    add_two_dim_dict(f_num_my, m, label, lst_val+1)
+                label = example.label
+                for lst in [ex.meta["subj_fine_grained_type"], ex.meta["obj_fine_grained_type"]]:
+                    for m in lst:
+                        lst_val = query_two_dim_dict(f_num_my, m, label)
+                        add_two_dim_dict(f_num_my, m, label, lst_val+1)
             
-            return new_examples, new_tokens, f_y, f_m, f_num_my, sum_m_times
+            return new_examples, new_tokens, f_num_my
 
         if ((num_examples is not None) and (num_examples > 0)):
             assert(num_examples <= len(examples)), "num_examples should <= len(all_train_examples)"
@@ -613,28 +601,18 @@ def load_examples(dataset_name, data_dir_parent: str, set_type: str, num_example
             label_list.append(example.label)
         label_distribution = Counter(label_list) # label分布：Counter对象，统计xxx有几个的dict
         logger.info(f"Returning {len(examples)} with {len(label_distribution.keys())} kind of relations {set_type} examples with label dist.: {list(label_distribution.items())}")
-        f_y = {}
-        for k in label_distribution.keys():
-                f_y[k] = float(label_distribution[k] / len(examples))
-
-        f_m = Counter()
-        sum_m_times = 0
-        f_my = dict() # 二维dict, f_my[metadata_token_id]["rel"] 注意rel此处是字符串，到wrapper里再转id，目前没有读rel2id
         
+        f_num_my = dict() # 二维dict, f_my[metadata_token_id]["rel"] 注意rel此处是字符串，到wrapper里再转id，目前没有读rel2id, 且内容是频数，不是频率
+            
         for ex in examples:
-            M_example = []
-            for lst in [ex.meta["subj_fine_grained_relation"], ex.meta["obj_fine_grained_relation"], ex.meta["subj_fine_grained_type"], ex.meta["obj_fine_grained_type"]]:
-                for token in lst:
-                    if token not in M_example:
-                        M_example.append(token)
-            sum_m_times = sum_m_times + len(M_example)
-            for m in M_example:
-                f_m[m] = f_m[m] + 1
-                label = example.label
-                lst_val = query_two_dim_dict(f_num_my, m, label)
-                add_two_dim_dict(f_num_my, m, label, lst_val+1)
+            label = example.label
+            for lst in [ex.meta["subj_fine_grained_type"], ex.meta["obj_fine_grained_type"]]:
+                for m in lst:
+                    lst_val = query_two_dim_dict(f_num_my, m, label)
+                    add_two_dim_dict(f_num_my, m, label, lst_val+1)
+        
+        return examples, new_tokens, f_num_my
 
-        return examples, new_tokens, f_y, f_m, f_my
 
     elif set_type == TEST_SET:
         examples, new_tokens = processor.get_test_examples(data_dir)

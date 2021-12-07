@@ -141,7 +141,7 @@ class NLIWrapperConfig(object):
         
 class NLIRelationWrapper():
     """A wrapper around a Transformer-based NLI language model."""
-    def __init__(self, config: NLIWrapperConfig, marker_new_tokens=None, f_y_train=None, f_m_train=None, f_my_train=None, sum_m_times=None):
+    def __init__(self, config: NLIWrapperConfig, marker_new_tokens=None, f_my_train=None):
         """Create a new wrapper from the given config."""
         self.config = config
         config_class = MODEL_CLASSES[self.config.model_type]['config'] # 用于获取model自身的config.json, 以得到label2id
@@ -251,48 +251,54 @@ class NLIRelationWrapper():
             assert(self.config.metadata_num_per_entity is not None)
             assert(self.config.metadata_insert_position is not None and self.config.metadata_insert_position in ['arrond_entity', 'ctx_end'])
             assert(self.config.metadata_description_pos is not None)
-
-            assert(f_y_train is not None)
-            assert(f_m_train is not None)
+           
             assert(f_my_train is not None)
-            assert(sum_m_times is not None)
-            
+            self.f_my = f_my_train # f_my[m][y]: int(次数)
+          
             self.metadata2id = None
             with open(self.config.metadata2id_path, 'r', encoding='utf-8') as f:
                 self.metadata2id = json.load(f)
 
-            self.f_y = f_y_train # {"rel: str": float频率}
             self.metadata = []
             with open(self.config.tot_metadata_path, 'r', encoding='UTF-8') as f:
                 for line in f.readlines():
                     line = line.strip('\n')
                     self.metadata.append(line)
-         
-            self.f_m = f_m_train # {"fine_grained_types+KGrelations: str": float频率}
-            self.f_my = f_my_train # f_my[m][y]: int(次数)
-            self.sum_m_times = sum_m_times
-
-            self.pmi_matrix = None
+            self.sum_my = 0
+            self.f_m = {} # {"fine_grained_types: str": int次数}
+            self.f_y = {} # {"rel: str": int次数}
             for m in self.metadata:
-                tmp_y = []
-                for rel_id in range(len(self.relation_name_list)):
-                    rel = self.id2rel[rel_id]
-                    if sum_m_times > 0 and self.f_m[m] > 0 and self.f_y[rel] > 0:
-                        # print(f"{m}, {rel} has cnt: {query_two_dim_dict(self.f_my, m, rel)}")
-                        tmp_y.append( float( (query_two_dim_dict(self.f_my, m, rel) / sum_m_times) / (self.f_y[rel] * self.f_m[m])) )
-                    else:
-                        tmp_y.append(0.0)
+                m_times = 0
+                for rel in self.relation_name_list:
+                    res = query_two_dim_dict(self.f_my, m, rel)
+                    self.sum_my = self.sum_my + res
+                    m_times = m_times + res
+                self.f_m[m] = m_times
+            for rel in self.relation_name_list:
+                rel_times = 0
+                for m in self.metadata:
+                    res = query_two_dim_dict(self.f_my, m, rel)
+                    rel_times = rel_times + res
+                self.f_y[rel] = rel_times
+
+            self.pmi_matrix: np = None
+            for m_name in self.metadata:
+                # 这里直接算该m对应的所有rel的pmi结果的一行向量
+                pmi_m = []
+                for rel_name in self.relation_name_list:
+                    p_m_y = float(query_two_dim_dict(self.f_my, m_name, rel_name) / self.sum_my)
+                    p_m = float(self.f_m[m_name] / self.sum_my)
+                    p_y = float(self.f_y[rel_name] / self.sum_my)
+                    val = float(p_m_y / (p_m * p_y)) if p_m > 0 and p_y > 0 else 0.0
+                    pmi_m.append(val)
                 if self.pmi_matrix is None:
-                    self.pmi_matrix = np.array(tmp_y)
+                    self.pmi_matrix = np.array(pmi_m)
                 else:
-                    self.pmi_matrix = np.vstack((self.pmi_matrix, np.array(tmp_y)))
-                # self.pmi_matrix.append(tmp_y)
-            # self.pmi_matrix = np.array(self.pmi_matrix) 
+                    self.pmi_matrix = np.vstack((self.pmi_matrix, np.array(pmi_m)))
             print(self.pmi_matrix.shape)
+            # np.save(os.path.join(os.getcwd(), "pmi_matrix.npy")) 把这个装写成txt查看一下具体内容是不是都是0
             # pause()
-
-
-
+            
         self.tot_new_tokens = 0
 
         self.ent_pos = model_config.label2id.get("ENTAILMENT", self.config.label2id.get("entailment", None))
@@ -356,9 +362,10 @@ class NLIRelationWrapper():
         """
         def softmax(x: np) -> np:
             return np.exp(x)/sum(np.exp(x))
-        def entropy(x: np):
-            new_x = np.log2(x)
-            return -np.sum(x*new_x)
+        def entropy(a: np, b: np):
+            # -sum(f_m_y* log(f_m_y/f_m)); a: f_m_y; b : f_m_y / f_m
+            log_b = np.log2(b)
+            return -np.sum(a*log_b)
 
         M_example = [] # metadata里的下标
         if entity_type == "subj":
@@ -387,16 +394,20 @@ class NLIRelationWrapper():
         
         for m_name in M_example:
             r_y = []
-            for rel in range(self.n_rel):
-                rel_name = self.id2rel[rel]
+            r_m_y = []
+            for rel_name in self.relation_name_list:
+                rel = self.rel2id[rel_name]
                 m = self.metadata2id[m_name]
-                pmi_rel = float(self.pmi_matrix[m, rel] * self.f_y[rel_name])
-                r_y.append(pmi_rel)
+                condition_p = float(self.pmi_matrix[m, rel] * self.f_y[rel_name] / self.sum_my)
+                r_y.append(condition_p)
+                p_m_y = float(query_two_dim_dict(self.f_my, m_name, rel_name) / self.sum_my)
+                r_m_y.append(p_m_y)
             r_y = np.array(r_y)
+            r_m_y = np.array(r_m_y)
             r_y = softmax(r_y)
-            H_m = entropy(r_y)# 对r_y里每个元素算交叉熵
+            H_m = entropy(r_m_y, r_y)# 对r_y里每个元素算交叉熵
             ret.append((m_name, H_m))
-        sorted(ret, key=lambda x: x[1])
+        ret = sorted(ret, key=lambda x: x[1])
         ret = ret[::-1]
         cnt = min(self.config.metadata_num_per_entity, len(ret))
         fin_ret = []

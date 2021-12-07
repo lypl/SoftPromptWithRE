@@ -19,7 +19,7 @@
     "metadata_insert_position": "ctx_end",
     "metadata_num_per_entity": 25,
     "metadata2id_path": "os.path.join(os.getcwd(), 'datasets', 'new', 'metadata2id.json')",
-    "check_filter_metadata_dir": "os.path.join(os.getcwd(), 'datasets', 'new', 'check_metadata_no_kg_rel')",
+    "check_filter_metadata_dir": "os.path.join(os.getcwd(), 'datasets', 'new', 'check_metadata_pmi')",
     "valid_conditions": {
         "per:alternate_names": ["PERSON:PERSON", "PERSON:MISC"],
         "per:date_of_birth": ["PERSON:DATE"],

@@ -105,7 +105,7 @@ if __name__ == '__main__':
                 REDataset_dir = eval(args["REdataset_dir_parent"])
               
                 # 使用small_data进行model方法检测,
-                train_data, train_new_tokens, f_y_train, f_m_train, f_my_train, sum_m_times = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=100)
+                train_data, train_new_tokens, f_my_train = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=100)
                 dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=100)
                 test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=100)
                 # train_data = train_data[:100]
@@ -144,8 +144,7 @@ if __name__ == '__main__':
                         if token not in new_tokens:
                             new_tokens.append(token)
                 
-                REWrapper: NLIRelationWrapper = NLIRelationWrapper(REWrapper_args, marker_new_tokens=new_tokens, f_y_train=f_y_train, 
-                                                                   f_m_train=f_m_train, f_my_train=f_my_train, sum_m_times=sum_m_times)
+                REWrapper: NLIRelationWrapper = NLIRelationWrapper(REWrapper_args, marker_new_tokens=new_tokens, f_my_train=f_my_train)
                 # NLITrainConfig_args:NLITrainConfig
                 Train_config_to_log, NLITrainConfig_args = load_config_from_file(args["NLITrainConfig_config_file_path"], NLITRAIN_CONFIG)
                 # hard code
