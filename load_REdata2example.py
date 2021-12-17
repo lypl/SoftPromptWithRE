@@ -171,6 +171,7 @@ class TACREDProcessor(DataProcessor):
         all_entity_marker_punct_new_tokens = []
         all_typed_marker_new_tokens = []
         all_typed_marker_punct_new_tokens = []
+        all_cueing_new_tokens = []
         for (i, line) in enumerate(lines):
             subj = line["h"]["name"]
             obj = line["t"]["name"]
@@ -210,22 +211,23 @@ class TACREDProcessor(DataProcessor):
 
             # 若存在fine-grained_type
             subj_fine_grained_type = []
-            subj_description: str = ""
+            subj_description = ""
             subj_fine_grained_relation = []
             if len(subj_fine_grained_res) > 0:
                 tmp_res = subj_fine_grained_res[0]
                 subj_fine_grained_type = tmp_res[1]
                 subj_description = tmp_res[2]
                 subj_fine_grained_relation = tmp_res[3]
-
+            subj_description = subj_description.split()
             obj_fine_grained_type = []
-            obj_description: str = ""
+            obj_description = ""
             obj_fine_grained_relation = []
             if len(obj_fine_grained_res) > 0:
                 tmp_res = obj_fine_grained_res[0]
                 obj_fine_grained_type = tmp_res[1]
                 obj_description = tmp_res[2]
                 obj_fine_grained_relation = tmp_res[3]
+            obj_description = obj_description.split()
 
             
             
@@ -237,6 +239,8 @@ class TACREDProcessor(DataProcessor):
             typed_marker_context_list, typed_marker_new_tokens, typed_marker_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker")
             
             typed_marker_punct_context_list, typed_marker_punct_new_tokens, typed_marker_punct_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker_punct")
+            
+            cueing_context_list, cueing_new_tokens, cueing_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "cueing")
             
             # 后续list换成str的时候需要使用这样的replace函数
             # print(" ".join(entity_marker_context).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]"))
@@ -252,8 +256,8 @@ class TACREDProcessor(DataProcessor):
             meta = {
                 "subj_pos": line["h"]["pos"],
                 "obj_pos": line["t"]["pos"],
-                "subj_description": subj_description,
-                "obj_description": obj_description,
+                "subj_description_list": subj_description,
+                "obj_description_list": obj_description,
                 "subj_fine_grained_relation": subj_fine_grained_relation,
                 "obj_fine_grained_relation": obj_fine_grained_relation,
                 "subj_coarse_grained_type": subj_coarse_grained_type,
@@ -265,9 +269,9 @@ class TACREDProcessor(DataProcessor):
                 "entity_marker_punct_context_list": entity_marker_punct_context_list,
                 "entity_marker_punct_new_entity_span": entity_marker_punct_new_entity_span,#
                 "typed_marker_context_list": typed_marker_context_list,
-                "typed_marker_new_entity_span": typed_marker_new_entity_span,#
-                "typed_marker_punct_context_list": typed_marker_punct_context_list,
-                "typed_marker_punct_new_entity_span": typed_marker_punct_new_entity_span,#
+                "typed_marker_new_entity_span": typed_marker_new_entity_span, # 
+                "cueing_context_list": cueing_context_list,
+                "cueing_new_entity_span": cueing_new_entity_span,#
             }
             example = InputExample(i, subj, obj, ori_tokens, context, label, pair_type=pair_type, meta=meta)
             examples.append(example)
@@ -284,12 +288,17 @@ class TACREDProcessor(DataProcessor):
             for token in typed_marker_punct_new_tokens:
                 if token not in all_typed_marker_punct_new_tokens:
                     all_typed_marker_punct_new_tokens.append(token)
+            for token in cueing_new_tokens:
+                if token not in cueing_new_tokens:
+                    all_cueing_new_tokens.append(token)
 
         new_tokens = {
             "all_entity_marker_new_tokens": all_entity_marker_new_tokens,
             "all_entity_marker_punct_new_tokens": all_entity_marker_punct_new_tokens,
             "all_typed_marker_new_tokens": all_typed_marker_new_tokens,
-            "all_typed_marker_punct_new_tokens": all_typed_marker_punct_new_tokens
+            "all_typed_marker_punct_new_tokens": all_typed_marker_punct_new_tokens,
+            "all_typed_marker_punct_new_tokens": all_typed_marker_punct_new_tokens,
+            "all_cueing_new_tokens": all_cueing_new_tokens
         }
         return examples, new_tokens
 
@@ -333,6 +342,7 @@ class ReTACREDProcessor(DataProcessor):
         all_entity_marker_punct_new_tokens = []
         all_typed_marker_new_tokens = []
         all_typed_marker_punct_new_tokens = []
+        all_cueing_new_tokens = []
         for (i, line) in enumerate(lines):
             subj = line["h"]["name"]
             obj = line["t"]["name"]
@@ -372,22 +382,23 @@ class ReTACREDProcessor(DataProcessor):
 
             # 若存在fine-grained_type
             subj_fine_grained_type = []
-            subj_description: str = ""
+            subj_description = ""
             subj_fine_grained_relation = []
             if len(subj_fine_grained_res) > 0:
                 tmp_res = subj_fine_grained_res[0]
                 subj_fine_grained_type = tmp_res[1]
                 subj_description = tmp_res[2]
                 subj_fine_grained_relation = tmp_res[3]
-
+            subj_description = subj_description.split()
             obj_fine_grained_type = []
-            obj_description: str = ""
+            obj_description = ""
             obj_fine_grained_relation = []
             if len(obj_fine_grained_res) > 0:
                 tmp_res = obj_fine_grained_res[0]
                 obj_fine_grained_type = tmp_res[1]
                 obj_description = tmp_res[2]
                 obj_fine_grained_relation = tmp_res[3]
+            obj_description = obj_description.split()
 
             
             
@@ -399,6 +410,8 @@ class ReTACREDProcessor(DataProcessor):
             typed_marker_context_list, typed_marker_new_tokens, typed_marker_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker")
             
             typed_marker_punct_context_list, typed_marker_punct_new_tokens, typed_marker_punct_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "typed_marker_punct")
+            
+            cueing_context_list, cueing_new_tokens, cueing_new_entity_span = get_marked_sentence(ori_tokens, subj_st, subj_ed, obj_st, obj_ed, subj_coarse_grained_type, obj_coarse_grained_type, "cueing")
             
             # 后续list换成str的时候需要使用这样的replace函数
             # print(" ".join(entity_marker_context).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]"))
@@ -414,8 +427,8 @@ class ReTACREDProcessor(DataProcessor):
             meta = {
                 "subj_pos": line["h"]["pos"],
                 "obj_pos": line["t"]["pos"],
-                "subj_description": subj_description,
-                "obj_description": obj_description,
+                "subj_description_list": subj_description,
+                "obj_description_list": obj_description,
                 "subj_fine_grained_relation": subj_fine_grained_relation,
                 "obj_fine_grained_relation": obj_fine_grained_relation,
                 "subj_coarse_grained_type": subj_coarse_grained_type,
@@ -427,9 +440,9 @@ class ReTACREDProcessor(DataProcessor):
                 "entity_marker_punct_context_list": entity_marker_punct_context_list,
                 "entity_marker_punct_new_entity_span": entity_marker_punct_new_entity_span,#
                 "typed_marker_context_list": typed_marker_context_list,
-                "typed_marker_new_entity_span": typed_marker_new_entity_span,#
-                "typed_marker_punct_context_list": typed_marker_punct_context_list,
-                "typed_marker_punct_new_entity_span": typed_marker_punct_new_entity_span,#
+                "typed_marker_new_entity_span": typed_marker_new_entity_span, # 
+                "cueing_context_list": cueing_context_list,
+                "cueing_new_entity_span": cueing_new_entity_span,#
             }
             example = InputExample(i, subj, obj, ori_tokens, context, label, pair_type=pair_type, meta=meta)
             examples.append(example)
@@ -446,12 +459,17 @@ class ReTACREDProcessor(DataProcessor):
             for token in typed_marker_punct_new_tokens:
                 if token not in all_typed_marker_punct_new_tokens:
                     all_typed_marker_punct_new_tokens.append(token)
+            for token in cueing_new_tokens:
+                if token not in cueing_new_tokens:
+                    all_cueing_new_tokens.append(token)
 
         new_tokens = {
             "all_entity_marker_new_tokens": all_entity_marker_new_tokens,
             "all_entity_marker_punct_new_tokens": all_entity_marker_punct_new_tokens,
             "all_typed_marker_new_tokens": all_typed_marker_new_tokens,
-            "all_typed_marker_punct_new_tokens": all_typed_marker_punct_new_tokens
+            "all_typed_marker_punct_new_tokens": all_typed_marker_punct_new_tokens,
+            "all_typed_marker_punct_new_tokens": all_typed_marker_punct_new_tokens,
+            "all_cueing_new_tokens": all_cueing_new_tokens
         }
         return examples, new_tokens
 

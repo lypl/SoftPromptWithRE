@@ -56,9 +56,12 @@ if __name__ == '__main__':
     parser.add_argument('--num_train_epoch', type=int, default=None, help='num_train_epoch')
     parser.add_argument('--experiment_id', type=str, default='3', help='run which experiment')
     parser.add_argument('--save_init_result', type=bool, default=False, help='save manT init res in wrong samples fold')
-    parser.add_argument('--marker_name', type=str, default='entity_marker', help='use which marker')
+    parser.add_argument('--marker_name', type=str, default='entity_marker_punct', help='use which marker')
     parser.add_argument('--marker_position', type=str, default='context', help='where use marker') 
     parser.add_argument('--marker_num_train_epoch', type=int, default=8, help='marker tuning epoch num') 
+    parser.add_argument('--desc_pos', type=str, default='ctx_end', help='where to add description') 
+    parser.add_argument('--prompt_type', type=str, default='relvec', help='') 
+    # parser.add_argument('--', type=str, default='', help='') 
     new_args = parser.parse_args() # args.xxx
 
     experiments_dir = os.path.join(os.getcwd(), "experiments_configs")
@@ -105,9 +108,12 @@ if __name__ == '__main__':
                 REDataset_dir = eval(args["REdataset_dir_parent"])
               
                 # 使用small_data进行model方法检测,
-                train_data, train_new_tokens, f_my_train = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=100)
-                dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=100)
-                test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=100)
+                # train_data, train_new_tokens, f_my_train = load_examples(args["REdataset_name"], REDataset_dir, "train", mode="small_dataset", sample_num_per_rel=100)
+                # dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev", mode="small_dataset", sample_num_per_rel=100)
+                # test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test", mode="small_dataset", sample_num_per_rel=100)
+                train_data, train_new_tokens, f_my_train = load_examples(args["REdataset_name"], REDataset_dir, "train")
+                dev_data, dev_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "dev")
+                test_data, test_new_tokens = load_examples(args["REdataset_name"], REDataset_dir, "test")
                 # train_data = train_data[:100]
                 # dev_data = dev_data[:50]
                 # test_data = test_data[:30]
@@ -115,7 +121,9 @@ if __name__ == '__main__':
                 
                 # REWrapper_args: NLIWrapperConfig, Wrapper_config_to_log: Dict
                 Wrapper_config_to_log, REWrapper_args = load_config_from_file(args["NLIWrapper_config_file_path"], NLIWRAPPER_CONFIG)
-            
+                REWrapper_args.metadata_description_pos = new_args.desc_pos
+                REWrapper_args.prompt_type = new_args.prompt_type
+                REWrapper_args.marker_name = new_args.marker_name
                 if REWrapper_args.use_marker:
                     tr_new_tokens = None
                     dv_new_tokens = None
@@ -129,9 +137,18 @@ if __name__ == '__main__':
                         ty = "all_typed_marker_new_tokens"
                     elif REWrapper_args.marker_name == "typed_marker_punct":
                         ty = "all_typed_marker_punct_new_tokens"
+                    elif REWrapper_args.marker_name == "cueing":
+                        ty = "all_cueing_new_tokens"
+                    # print(ty)
+                    # print(REWrapper_args.marker_name)
+                    # print("------")
                     tr_new_tokens = train_new_tokens[ty]
                     dv_new_tokens = dev_new_tokens[ty]
                     te_new_tokens = test_new_tokens[ty]
+                    # print(Counter(tr_new_tokens))
+                    # print(Counter(dv_new_tokens))
+                    # print(Counter(te_new_tokens))
+                    # input()
 
                     new_tokens = [] # train/dev/test里的 把所有可能的new_token都弄出来
                     for token in tr_new_tokens:
@@ -143,7 +160,8 @@ if __name__ == '__main__':
                     for token in te_new_tokens:
                         if token not in new_tokens:
                             new_tokens.append(token)
-                
+    
+                print(new_tokens)
                 REWrapper: NLIRelationWrapper = NLIRelationWrapper(REWrapper_args, marker_new_tokens=new_tokens, f_my_train=f_my_train)
                 # NLITrainConfig_args:NLITrainConfig
                 Train_config_to_log, NLITrainConfig_args = load_config_from_file(args["NLITrainConfig_config_file_path"], NLITRAIN_CONFIG)
@@ -186,7 +204,7 @@ if __name__ == '__main__':
                     project="Verbalize_RE",
                     config=wdb_config,
                     notes="marker_tuning",
-                    name=REWrapper_args.marker_name+"metadata"
+                    name=REWrapper_args.marker_name
                 )
                 # init_exp_info = {
                 #     "dataset_name": args["REdataset_name"],
@@ -205,7 +223,11 @@ if __name__ == '__main__':
                 }
 
                 # debug
+                print(new_args.save_init_result)
+                print(type(new_args.save_init_result))
                 if new_args.save_init_result:
+
+                    print("should be true.-----------")
                     forward_result = NLIforward(REWrapper, test_data, NLIEvalConfig_args)
                     save_result_for_a_experiment(forward_result, eval(args["RE_result_dir"]), args["experiment_info"]["name"], exp_info) # just for debug
                     # pause()

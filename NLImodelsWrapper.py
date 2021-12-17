@@ -61,6 +61,12 @@ MODEL_CLASSES = {
         NLIWRAPPER: AutoModelForSequenceClassification,
         # 'base_model': DebertaForSequenceClassification.deberta
     },
+    'electra': {
+        'config': AutoConfig,
+        'tokenizer': AutoTokenizer,
+        NLIWRAPPER: AutoModelForSequenceClassification,
+        # 'base_model': DebertaForSequenceClassification.deberta
+    },
 }
 CONFIG_NAME = 'NLIWrapper_config.json'
 
@@ -111,11 +117,18 @@ class NLIWrapperConfig(object):
         self.negative_idx = negative_idx
         self.max_activations = max_activations
         self.valid_conditions = valid_conditions
-        self.label2id = {
-            "contradiction": 0,
-            "neutral": 1,
-            "entailment": 2
-        } # 这个是为了保险，从model主页上的config里复制的
+        if self.model_type == 'electra' or self.model_type == 'albert':
+            self.label2id = {
+                "entailment": 0,
+                "neutral": 1,
+                "contradiction": 2
+            }
+        else :
+            self.label2id = {
+                "contradiction": 0,
+                "neutral": 1,
+                "entailment": 2
+            } # 这个是为了保险，从model主页上的config里复制的
 
         # for PT
         self.relvec_construct_mode = relvec_construct_mode
@@ -159,12 +172,18 @@ class NLIRelationWrapper():
             self.base_model = self.model.deberta
         elif self.config.model_type == 'bart':
             self.base_model = self.model.bart
+        elif self.config.model_type == 'electra':
+            self.base_model = self.model.electra
 
-        self.marker_types = ["entity_mask", "entity_marker", "entity_marker_punct", "typed_marker", "typed_marker_punct"]
+        self.marker_types = ["entity_mask", "entity_marker", "entity_marker_punct", "typed_marker", "typed_marker_punct", "cueing"]
         
         if marker_new_tokens is not None:
             # most_original_vocab_size = len(list(self.tokenizer.get_vocab()))
+            # print(marker_new_tokens)
+            # print(len(list(self.tokenizer.get_vocab())))
             self.tokenizer.add_tokens(marker_new_tokens)
+            ebd = self.model.resize_token_embeddings(len(self.tokenizer))
+            # print(len(list(self.tokenizer.get_vocab())))
 
         self.all_relations = get_relations(self.config.relations_data_dir, self.config.relations_data_name) # 含有'NA'关系
         
@@ -208,6 +227,9 @@ class NLIRelationWrapper():
                             prompt.append(word)
                         else:
                             tokens = self.tokenizer.tokenize(' ' + word)
+                            # print(len(tokens))
+                            # print(tokens)
+                            # input()
                             for token in tokens:
                                 self.tot_new_tokens += 1 # [V1]开始
                                 prompt.append(get_new_token(self.tot_new_tokens, self.config.max_num_relvec))
@@ -249,7 +271,7 @@ class NLIRelationWrapper():
             assert(self.config.metadata2id_path is not None) 
             assert(self.config.tot_metadata_path is not None)
             assert(self.config.metadata_num_per_entity is not None)
-            assert(self.config.metadata_insert_position is not None and self.config.metadata_insert_position in ['arrond_entity', 'ctx_end'])
+            assert(self.config.metadata_insert_position is not None and self.config.metadata_insert_position in ['arround_entity', 'ctx_end'])
             assert(self.config.metadata_description_pos is not None)
            
             assert(f_my_train is not None)
@@ -437,8 +459,10 @@ class NLIRelationWrapper():
             features.append(InputFeatures(corresponce_to_InputExample_idx=example.idx, input_ids=i, token_type_ids=t, attention_mask=a, label=label, logits=logits, train_label=train_label))
         return features
 
-    def add_fine_grained_type_arround_entity_to_ctx(example, ctx_type, entity_span_type, subj_fine_grained_types: List, obj_fine_grained_types: List):
+    def add_fine_grained_type_arround_entity_to_ctx(self, example, ctx_type, entity_span_type, subj_fine_grained_types, obj_fine_grained_types):
         ctx_list = example.meta[ctx_type] # self.marker_name对应的ctx_list
+        subj_desc = example.meta["subj_description_list"]
+        obj_desc = example.meta["obj_description_list"]
         entity_span = example.meta[entity_span_type]
         subj_ed = entity_span["new_subj_ed"]
         obj_ed = entity_span["new_obj_ed"]
@@ -446,8 +470,12 @@ class NLIRelationWrapper():
         for i, token in enumerate(ctx_list):
             if i == subj_ed:
                 ret.extend(subj_fine_grained_types)
+                if self.config.use_metadata_description and self.config.metadata_description_pos != "ctx_end":
+                    ret.extend(subj_desc)
             if i == obj_ed:
                 ret.extend(obj_fine_grained_types)
+                if self.config.use_metadata_description and self.config.metadata_description_pos != "ctx_end":
+                    ret.extend(obj_desc)
             ret.append(token)
         return ret
     
@@ -474,7 +502,12 @@ class NLIRelationWrapper():
             elif self.config.marker_name == "typed_marker_punct":
                 ctx_type = "typed_marker_punct_context_list"
                 entity_span_type = "typed_marker_punct_new_entity_span"
+            elif self.config.marker_name == "cueing":
+                ctx_type = "cueing_context_list"
+                entity_span_type = "cueing_new_entity_span"
+            # print(ctx_type)
             ctx = example.meta[ctx_type]
+            
             if self.config.use_metadata:
                 subj_fine_grained_types, ori_sub_res = self.select_metadata_for_example(example, "subj")
                 obj_fine_grained_types, ori_obj_res = self.select_metadata_for_example(example, "obj")
@@ -491,12 +524,22 @@ class NLIRelationWrapper():
                 #     }
                 #     f.write(json.dumps(to_write))
                 #     f.write("\n")
+
                 if self.config.metadata_insert_position == "ctx_end":
                     ctx.extend(subj_fine_grained_types)
+                    if self.config.use_metadata_description and self.config.metadata_description_pos == "ctx_end":
+                        ctx.extend(example.meta["subj_description_list"])
                     ctx.extend(obj_fine_grained_types)
+                    if self.config.use_metadata_description and self.config.metadata_description_pos == "ctx_end":
+                        ctx.extend(example.meta["obj_description_list"])
                 else:
-                    ctx = self.add_fine_grained_type_arround_entity_to_ctx(example, ctx_type, subj_fine_grained_types, obj_fine_grained_types)
-                # use description:how? how many token to use? where to insert?
+                    ctx = self.add_fine_grained_type_arround_entity_to_ctx(example, ctx_type, entity_span_type, subj_fine_grained_types, obj_fine_grained_types)
+                # print(subj_fine_grained_types)
+                # print(example.meta["subj_description_list"])
+                # print(obj_fine_grained_types)
+                # print(example.meta["obj_description_list"])
+                # print(ctx)
+                # print("-------------")
                     
             
             example.context = " ".join(ctx).replace("-LRB-", "(").replace("-RRB-", ")").replace("-LSB-", "[").replace("-RSB-", "]").replace("-LCB-", "{").replace("-RCB-", "}")
@@ -504,7 +547,12 @@ class NLIRelationWrapper():
             # 不tuning soft_template
             for template in self.template_list:
                 res = f"{example.context} {self.tokenizer.sep_token} {template.format(subj=example.subj, obj=example.obj)}." 
+                # print(res)
+                # print(self.tokenizer(res))
+                # input()
                 example.raw_texts_to_tokenizer.append(res)
+                # print(res)
+            # pause()
         else:
             example.train_label = []
             if example.label != "NA" or example.label != "no_relation":
@@ -660,6 +708,7 @@ class NLIRelationWrapper():
     
     def eval_step(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         inputs = self.generate_default_inputs(batch)
+        # print(inputs["input_ids"].max())
         outputs = self.model(**inputs)
         return outputs.logits
 
@@ -823,6 +872,7 @@ class NLIRelationWrapper():
         """
 
         eval_dataset = self._generate_dataset(eval_data, 0)
+        # pause()
         eval_batch_size = per_gpu_eval_batch_size * max(1, n_gpu)
         eval_sampler = SequentialSampler(eval_dataset)
         eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=eval_batch_size, num_workers=8, pin_memory=True)
@@ -834,6 +884,8 @@ class NLIRelationWrapper():
         all_indices, out_label_ids, question_ids = None, None, None
 
         self.model.eval()
+        
+        print([(n, p, p.size()) for n, p in self.model.named_parameters()][0])
         for batch in tqdm(eval_dataloader, desc="Evaluating"):
             batch = {k: t.to(device) for k, t in batch.items()}
             labels = batch['labels'] # 一列，所有的feature的label按顺序的列表
@@ -1220,6 +1272,7 @@ class NLIRelationWrapper():
         train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=train_batch_size, num_workers=8, pin_memory=True)
         
+        # print(self.model.named_parameters())
         no_decay = ['bias', 'LayerNorm.weight'] # 此处也要finetuning wordembedding里所有词，包括softprompt的部分，因为其初始化为一些hard token，所以这里tuning soft word相当于finetuning这些hard token
         optimizer_grouped_parameters = [
             {'params': [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay)],'weight_decay': weight_decay},
@@ -1253,13 +1306,16 @@ class NLIRelationWrapper():
 
                 loss.backward()
                 tr_loss += loss.item()
-                
+                # if (step + 1) % 4 == 0:
+                #     micro_f1, f1_by_relation, _, _ = self.evaluate_RE(dev_data, device,
+                #                                                       eval_batch_size)  # evaluate()这里直接用RE的结果来查看tuning的结果
+                #     logger.info('micro_f1: %.2f' % (micro_f1))
 
                 if (step + 1) % gradient_accumulation_steps == 0:
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_grad_norm) # 梯度截断，
                     optimizer.step()
                     scheduler.step()
-                    optimizer.zero_grad() 
+                    optimizer.zero_grad()
                     self.model.zero_grad() # ?optiT里的部分
                     global_step += 1
                     wandb.log({
@@ -1272,7 +1328,7 @@ class NLIRelationWrapper():
             # 每个epoch结束后进行evaluate
             logger.info('End one epoch: %d, evaluating...'%(epoch+1))
             micro_f1, f1_by_relation, _, _ = self.evaluate_RE(dev_data, device, eval_batch_size) # evaluate()这里直接用RE的结果来查看tuning的结果
-           
+            logger.info('micro_f1: %.2f' % (micro_f1))
             history_mi_f1.append(micro_f1)
             history_ma_f1.append(f1_by_relation)
             if micro_f1 > mx_res:

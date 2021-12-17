@@ -319,105 +319,141 @@ def get_new_token(vid, max_num_relvec):
     return '[V%d]'%(vid)
 
 def get_marked_sentence(ori_context, subj_st, subj_ed, obj_st, obj_ed, subj_type, obj_type, marker_name):
-        marker_types = ["entity_marker", "entity_marker_punct", "typed_marker", "typed_marker_punct"]
-        ctx = []
-        new_tokens = []
-        new_subj_st = -1
-        new_subj_ed = -1
-        new_obj_st = -1
-        new_obj_ed = -1
-        if marker_name == marker_types[0]:
-            for i, token in enumerate(ori_context):
-                if i == subj_st:
-                    ctx.append("[E1]")
-                    new_tokens.append("[E1]")
-                    new_subj_st = len(ctx)
-                if i == subj_ed:
-                    new_subj_ed = len(ctx)
-                    ctx.append("[/E1]")
-                    new_tokens.append("[/E1]")
-                if i == obj_st:
-                    ctx.append("[E2]")
-                    new_tokens.append("[E2]")
-                    new_obj_st = len(ctx)
-                if i == obj_ed:
-                    new_obj_ed = len(ctx)
-                    ctx.append("[/E2]")
-                    new_tokens.append("[/E2]")
-                ctx.append(token)
-        elif marker_name == marker_types[1]:
-            for i, token in enumerate(ori_context):
-                if i == subj_st:
-                    ctx.append("@")
-                    new_subj_st = len(ctx)
-                if i == subj_ed:
-                    new_subj_ed = len(ctx)
-                    ctx.append("@")
-                if i == obj_st:
-                    ctx.append("#")
-                    new_obj_st = len(ctx)
-                if i == obj_ed:
-                    new_obj_ed = len(ctx)
-                    ctx.append("#")
-                ctx.append(token)
-        elif marker_name == marker_types[2]:
-            for i, token in enumerate(ori_context):
-                if i == subj_st:
-                    res = "[E1:{}]".format(subj_type)
-                    ctx.append(res)
-                    new_subj_st = len(ctx)
-                    if res not in new_tokens:
-                        new_tokens.append(res)
-                if i == subj_ed:
-                    res = "[/E1:{}]".format(subj_type)
-                    new_subj_ed = len(ctx)
-                    ctx.append(res)
-                    if res not in new_tokens:
-                        new_tokens.append(res)
-                if i == obj_st:
-                    res = "[E2:{}]".format(obj_type)
-                    ctx.append(res)
-                    new_obj_st = len(ctx)
-                    if res not in new_tokens:
-                        new_tokens.append(res)
-                if i == obj_ed:
-                    res = "[/E2:{}]".format(obj_type)
-                    new_obj_ed = len(ctx)
-                    ctx.append(res)
-                    if res not in new_tokens:
-                        new_tokens.append(res)
-                ctx.append(token)
-        elif marker_name == marker_types[3]:
-            # 注意实体类型都是小写
-            for i, token in enumerate(ori_context):
-                if i == subj_st:
-                    res = "@ * {}".format(subj_type)
-                    ctx.append(res)
-                    new_subj_st = len(ctx)
-                    if res not in new_tokens:
-                        new_tokens.append(res)
-                if i == subj_ed:
-                    res = "* @"
-                    new_subj_ed = len(ctx)
-                    ctx.append(res)
-                if i == obj_st:
-                    res = "# ^ {}".format(obj_type)
-                    ctx.append(res)
-                    new_obj_st = len(ctx)
-                    if res not in new_tokens:
-                        new_tokens.append(res)
-                if i == obj_ed:
-                    res = "^ #"
-                    new_obj_ed = len(ctx)
-                    ctx.append(res)
-                ctx.append(token)
-        new_entity_span = {
-            "new_subj_st": new_subj_st,
-            "new_subj_ed": new_subj_ed,
-            "new_obj_st": new_obj_st,
-            "new_obj_st": new_obj_ed,
-        }
-        return ctx, new_tokens, new_entity_span
+    # print(marker_name)
+    marker_types = ["entity_marker", "entity_marker_punct", "typed_marker", "typed_marker_punct", "cueing"]
+    ctx = []
+    new_tokens = []
+    new_subj_st = -1
+    new_subj_ed = -1
+    new_obj_st = -1
+    new_obj_ed = -1
+    if marker_name == marker_types[0]:
+        for i, token in enumerate(ori_context):
+            if i == subj_st:
+                ctx.append("[E1]")
+                new_tokens.append("[E1]")
+                new_subj_st = len(ctx)
+            if i == subj_ed:
+                new_subj_ed = len(ctx)
+                ctx.append("[/E1]")
+                new_tokens.append("[/E1]")
+            if i == obj_st:
+                ctx.append("[E2]")
+                new_tokens.append("[E2]")
+                new_obj_st = len(ctx)
+            if i == obj_ed:
+                new_obj_ed = len(ctx)
+                ctx.append("[/E2]")
+                new_tokens.append("[/E2]")
+            ctx.append(token)
+    elif marker_name == marker_types[1]:
+        for i, token in enumerate(ori_context):
+            if i == subj_st:
+                ctx.append("@")
+                new_subj_st = len(ctx)
+            if i == subj_ed:
+                new_subj_ed = len(ctx)
+                ctx.append("@")
+            if i == obj_st:
+                ctx.append("#")
+                new_obj_st = len(ctx)
+            if i == obj_ed:
+                new_obj_ed = len(ctx)
+                ctx.append("#")
+            ctx.append(token)
+    elif marker_name == marker_types[2]:
+        for i, token in enumerate(ori_context):
+            # 这种加新token的方式可能不太对，应该把[、E1、:、type、]分开加
+            if i == subj_st:
+                res = "[E1:{}]".format(subj_type)
+                ctx.append(res)
+                new_subj_st = len(ctx)
+                if res not in new_tokens:
+                    new_tokens.append(res)
+            if i == subj_ed:
+                res = "[/E1:{}]".format(subj_type)
+                new_subj_ed = len(ctx)
+                ctx.append(res)
+                if res not in new_tokens:
+                    new_tokens.append(res)
+            if i == obj_st:
+                res = "[E2:{}]".format(obj_type)
+                ctx.append(res)
+                new_obj_st = len(ctx)
+                if res not in new_tokens:
+                    new_tokens.append(res)
+            if i == obj_ed:
+                res = "[/E2:{}]".format(obj_type)
+                new_obj_ed = len(ctx)
+                ctx.append(res)
+                if res not in new_tokens:
+                    new_tokens.append(res)
+            ctx.append(token)
+    elif marker_name == marker_types[3]:
+        # 注意实体类型都是小写
+        for i, token in enumerate(ori_context):
+            if i == subj_st:
+                res = "@ * {}".format(subj_type)
+                ctx.append(res)
+                new_subj_st = len(ctx)
+                if res not in new_tokens:
+                    new_tokens.append(res)
+            if i == subj_ed:
+                res = "* @"
+                new_subj_ed = len(ctx)
+                ctx.append(res)
+            if i == obj_st:
+                res = "# ^ {}".format(obj_type)
+                ctx.append(res)
+                new_obj_st = len(ctx)
+                if res not in new_tokens:
+                    new_tokens.append(res)
+            if i == obj_ed:
+                res = "^ #"
+                new_obj_ed = len(ctx)
+                ctx.append(res)
+            ctx.append(token)
+    elif marker_name == marker_types[4]:
+        # 注意实体类型都是小写 "cueing"
+        for i, token in enumerate(ori_context):
+            if i == subj_st:
+                res = "{ ( head )"
+                ctx.append(res)
+                new_subj_st = len(ctx)
+                if "{" not in new_tokens:
+                    new_tokens.append("{")
+                if "(" not in new_tokens:
+                    new_tokens.append("(")
+                if "head" not in new_tokens:
+                    new_tokens.append("head")
+            if i == subj_ed:
+                new_subj_ed = len(ctx)
+                ctx.append("}")
+                if "}" not in new_tokens:
+                    new_tokens.append("}")
+            if i == obj_st:
+                res = "⟨ ⌈ tail ⌋"
+                ctx.append(res)
+                new_obj_st = len(ctx)
+                if "⟨" not in new_tokens:
+                    new_tokens.append("⟨")
+                if "⌈" not in new_tokens:
+                    new_tokens.append("⌈")
+                if "tail" not in new_tokens:
+                    new_tokens.append("tail")
+            if i == obj_ed:
+                new_obj_ed = len(ctx)
+                ctx.append("⟩")
+                if "⟩" not in new_tokens:
+                    new_tokens.append(res)
+            ctx.append(token)
+    new_entity_span = {
+        "new_subj_st": new_subj_st,
+        "new_subj_ed": new_subj_ed,
+        "new_obj_st": new_obj_st,
+        "new_obj_ed": new_obj_ed,
+    }
+    return ctx, new_tokens, new_entity_span
         
 
 
